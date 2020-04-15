@@ -118,9 +118,7 @@ export const autoTick = <T extends TileKey, C extends Good, P extends Good>(
                     instanceState[good] -= value;
                   }, formula);
                 }
-                instanceState[good] += instance.tile.productivity(
-                  instance.coordinate,
-                );
+                instanceState[good] += instance.tile.productivity(instance);
                 return true;
               }
               return stillProducing || false;
@@ -136,6 +134,14 @@ export const autoTick = <T extends TileKey, C extends Good, P extends Good>(
 };
 
 // todo can't seem to combine them even though they should be able to
+/**
+ * Create a ticking standard tile instance, i.e. listen for the global clock
+ * and perform the `tick` function.
+ *
+ * @param tile a standard tile
+ * @param auto (optional) use generic auto tick (default: true)
+ * @returns a ticking standard tile instance base class
+ */
 export function StandardTickingInstance<
   T extends TileKey,
   Consumes extends Good,
@@ -143,6 +149,7 @@ export function StandardTickingInstance<
   Costs extends CostGood | "Nothing"
 >(
   tile: StandardTile<T, Consumes, Produces, Costs>,
+  auto: boolean = true,
 ): Constructor1<
   Coordinate,
   StandardTileInstance<T, Consumes, Produces, Costs> & Tick
@@ -160,17 +167,28 @@ export function StandardTickingInstance<
     }
 
     public tick(): void {
-      //not implemented
+      if (auto) {
+        autoTick(this);
+      }
     }
   };
 }
 
+/**
+ * Create a ticking stateful tile instance, i.e. listen for the global clock
+ * and perform the `tick` function.
+ *
+ * @param tile a standard tile
+ * @param auto (optional) use generic auto tick (default: true)
+ * @returns a ticking stateful tile instance base class
+ */
 export function StatefulTickingInstance<
   T extends TileKey,
   Consumes extends Good,
   Produces extends Good
 >(
   tile: StatefulTile<T, Consumes, Produces>,
+  auto: boolean = true,
 ): Constructor1<
   Coordinate,
   StatefulTileInstance<T, Consumes, Produces> & Tick
@@ -188,7 +206,9 @@ export function StatefulTickingInstance<
     }
 
     public tick(): void {
-      //not implemented
+      if (auto) {
+        autoTick(this);
+      }
     }
   };
 }
