@@ -225,10 +225,7 @@ const createInfoView = (
           0,
           "Productivity: " +
             Math.round(
-              Math.min(
-                1,
-                tileInstance.tile.productivity(tileInstance.coordinate),
-              ) * 100,
+              Math.min(1, tileInstance.tile.productivity(tileInstance)) * 100,
             ) +
             "%",
           {

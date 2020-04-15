@@ -1,4 +1,4 @@
-import { StandardTile } from "./Tile";
+import { StandardTile, toProductivity } from "./Tile";
 import { Coordinate } from "../Coordinate";
 import { StandardTickingInstance } from "./TickingInstance";
 import { isBuildable } from "./utils";
@@ -34,7 +34,8 @@ export const Chapel: Chapel = {
 
   influence: (coord): Coordinate[] => Coordinate.range(coord, 4),
 
-  productivity: (): number => 1,
+  productivity: () => toProductivity(1),
+  baseProductivity: () => toProductivity(1),
 
   create: (coord) => new ChapelInstance(coord),
 };

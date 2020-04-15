@@ -1,31 +1,93 @@
 import { Coordinate } from "../Coordinate";
 import { CostGood, Good, InventoryView } from "../Goods";
 import { TileKey } from "./index";
-import { Writable } from "ts-essentials";
+import { Opaque, Writable } from "ts-essentials";
 import { Constructor1 } from "../../utils";
 
+/**
+ * Base interface for all Tiles. A Tile is a tagged configuration of a world map element.
+ */
 export interface Tile<T extends TileKey = any> {
+  /** The TileKey tag uniquely identifying this Tile */
   readonly tag: T;
 
+  /**
+   * Create a new instance of this Tile type
+   *
+   * @param coord where does the instance live?
+   * @returns a new tile instance
+   */
   create(coord: Coordinate): TileInstance<T>;
 }
 
+/**
+ * Type guard for Tiles
+ *
+ * @param value the value to guard
+ * @returns value is a tile
+ * @see Tile
+ */
 export const isTile = (value: any): value is Tile<any> =>
   typeof value?.tag === "string" && typeof value?.create === "function";
 
+/**
+ * Type assertions for Tiles
+ *
+ * @param value the value to assert
+ * @throws TypeError
+ * @see Tile
+ */
+export function assertTile(value: any): asserts value is Tile<any> {
+  if (!isTile(value)) {
+    throw new TypeError(
+      `provided value (${JSON.stringify(value)}) is not a tile!`,
+    );
+  }
+}
+
+interface WithInfluence {
+  /**
+   * Which tiles based on the provided coordinate does the tile influence?
+   *
+   * @param coord the coordinate acting as center of the influence
+   * @returns the influenced coordinates as array
+   * @see Coordinate
+   */
+  influence(coord: Coordinate): Coordinate[];
+}
+
+/**
+ * A constructable Tile is the base interface for a Tile that can be created by
+ * the player and has a cost associated with it.
+ *
+ * @see Tile
+ */
 export interface ConstructableTile<
   T extends TileKey,
   Costs extends CostGood | "Nothing"
-> extends Tile<T> {
+> extends Tile<T>, WithInfluence {
+  /** Configures the cost of this Tile */
   readonly costs: InventoryView<Costs>;
 
+  /**
+   * Check whether this tile is allowed at this coordinate
+   *
+   * @param coord the coordinate to check
+   * @returns tile allowed at coordinate?
+   * @see Coordinate
+   */
   allowed(coord: Coordinate): boolean;
-
-  influence(coord: Coordinate): Coordinate[];
 
   create(coord: Coordinate): ConstructableTileInstance<T, Costs>;
 }
 
+/**
+ * Type guard for constructable Tiles
+ *
+ * @param value the value to guard
+ * @returns value is a constructable Tile
+ * @see ConstructableTile
+ */
 export const isConstructableTile = (
   value: any,
 ): value is ConstructableTile<any, any> =>
@@ -34,6 +96,29 @@ export const isConstructableTile = (
   typeof value?.costs === "object" &&
   isTile(value);
 
+/**
+ * Type assertions for constructable Tiles
+ *
+ * @param value the value to assert
+ * @throws TypeError
+ * @see ConstructableTile
+ */
+export function assertConstructableTile(
+  value: any,
+): asserts value is ConstructableTile<any, any> {
+  if (!isConstructableTile(value)) {
+    throw new TypeError(
+      `provided value (${JSON.stringify(value)}) is not a constructable tile!`,
+    );
+  }
+}
+
+/**
+ * Helper type to combine Consumes and Produces goods and get the correct
+ * type to be used for states, i.e. don't include Nothing
+ *
+ * @see Good
+ */
 type StateGoods<
   Consumes extends Good,
   Produces extends Good
@@ -43,27 +128,127 @@ type StateGoods<
   ? Consumes
   : Consumes | Produces;
 
+/**
+ * Opaque types for productivities. Productivity is represented as a percentage
+ * with a number in [0., 1.]
+ */
+export type Productivity = Opaque<"Productivity", number>;
+/**
+ * Type guard for productivities
+ *
+ * @param value the value to test
+ * @returns value is a Productivity
+ * @see Productivity
+ */
+export const isProductivity = (value: any): value is Productivity =>
+  typeof value === "number" && value >= 0 && value <= 1;
+/**
+ * Type assertion for productivities
+ *
+ * @param value the value to assert
+ * @see Productivity
+ */
+export function assertProductivity(value: any): asserts value is Productivity {
+  if (!isProductivity(value)) {
+    throw new Error(
+      `TypeError: provided value ${JSON.stringify(
+        value,
+      )} is not a productivity value.`,
+    );
+  }
+}
+/**
+ * Safely convert number ot Productivity
+ *
+ * @param value the number to convert
+ * @returns the converted productivity
+ * @see Productivity
+ */
+export const toProductivity = (value: number): Productivity => {
+  assertProductivity(value);
+  return value;
+};
+
+/**
+ * A stateful Tile is a tile that consumes and produces goods according to a formula
+ * and maintains that information in a state.
+ *
+ * Note: A stateful tile is not necessarily a constructable tile (and vice versa).
+ * For example a FishSchool is stateful but not constructable by the player.
+ *
+ * @see Tile
+ */
 export interface StatefulTile<
   T extends TileKey,
   Consumes extends Good,
   Produces extends Good
-> extends Tile<T> {
+> extends Tile<T>, WithInfluence {
+  /** Configures the goods that are consumed by this tile */
   readonly consumes: InventoryView<Consumes>;
+  /** Configures the goods that are produced by this tile */
   readonly produces: InventoryView<Produces>;
+  /** Configures how consumption goods are converted to production goods
+   * There can be multiple ways a production good can be produced (e.g. money)
+   * in this case instead of a simple mapping, an array of mappings can be provided.
+   *
+   * @example
+   * {
+   *   Jewelery: {
+   *     Gold: 2,
+   *     Jewel: 1,
+   *   },
+   *   Money: [
+   *     { Gold: 1 },
+   *     { Silver: 1 }
+   *   ]
+   * }
+   *
+   */
   readonly formula: InventoryView<
     Produces,
     | Partial<InventoryView<Consumes>>
     | readonly Partial<InventoryView<Consumes>>[]
   >;
+  /**
+   * Initial state of consumption and production goods an instance starts with
+   * usually maps to 0.
+   *
+   * @example
+   * {
+   *   Gold: 0,
+   *   Jewel: 0,
+   *   Money: 0,
+   * }
+   */
   readonly initialState: InventoryView<StateGoods<Consumes, Produces>>;
 
-  influence(coord: Coordinate): Coordinate[];
-
-  productivity(coord: Coordinate): number;
+  /**
+   * The base productivity possible at this coordinate.
+   *
+   * @param coord the coordinate to check
+   * @returns the base productivity possible at this coordinate.
+   * @see Productivity
+   */
+  baseProductivity(coord: Coordinate): Productivity;
+  /**
+   * The productivity of this specific instance
+   *
+   * @param inst the instance to check
+   * @returns the productivity of this specific instance
+   * @see Productivity
+   */
+  productivity(inst: StatefulTileInstance<T, Consumes, Produces>): Productivity;
 
   create(coord: Coordinate): StatefulTileInstance<T, Consumes, Produces>;
 }
 
+/**
+ * Type guard for stateful Tiles
+ *
+ * @param value the value to guard
+ * @returns value is a stateful Tile
+ * @see StatefulTile
+ */
 export const isStatefulTile = (
   value: any,
 ): value is StatefulTile<any, any, any> =>
@@ -75,6 +260,30 @@ export const isStatefulTile = (
   typeof value?.initialState === "object" &&
   isTile(value);
 
+/**
+ * Type assertions for stateful Tiles
+ *
+ * @param value the value to assert
+ * @throws TypeError
+ * @see StatefulTile
+ */
+export const assertStatefulTile = (
+  value: any,
+): asserts value is StatefulTile<any, any, any> => {
+  if (!isStatefulTile(value)) {
+    throw new TypeError(
+      `provided value (${JSON.stringify(value)}) is not a stateful tile!`,
+    );
+  }
+};
+
+/**
+ * Standard tiles are constructable, stateful tiles. These are usually the
+ * type of tiles the player interacts with.
+ *
+ * @see ConstructableTile
+ * @see StatefulTile
+ */
 export interface StandardTile<
   T extends TileKey,
   Consumes extends Good,
@@ -84,10 +293,34 @@ export interface StandardTile<
   create(coord: Coordinate): StandardTileInstance<T, Consumes, Produces, Costs>;
 }
 
+/**
+ * Type guard for standard Tiles
+ *
+ * @param value the value to guard
+ * @returns value is a standard Tile
+ * @see StandardTile
+ */
 export const isStandardTile = (
   value: any,
 ): value is StandardTile<any, any, any, any> =>
   isConstructableTile(value) && isStatefulTile(value);
+
+/**
+ * Type assertions for standard Tiles
+ *
+ * @param value the value to assert
+ * @throws TypeError
+ * @see StandardTile
+ */
+export const assertStandardTile = (
+  value: any,
+): asserts value is StandardTile<any, any, any, any> => {
+  if (!isStandardTile(value)) {
+    throw new TypeError(
+      `provided value (${JSON.stringify(value)}) is not a standard tile!`,
+    );
+  }
+};
 
 export interface TileInstance<T extends TileKey = any> {
   readonly tile: Readonly<Tile<T>>;

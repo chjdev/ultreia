@@ -1,4 +1,4 @@
-import { StandardTile } from "./Tile";
+import { StandardTile, toProductivity } from "./Tile";
 import { Coordinate } from "../Coordinate";
 import { Lumberjack } from "./Lumberjack";
 import { StandardTickingInstance } from "./TickingInstance";
@@ -37,7 +37,8 @@ export const Tanner: Tanner = {
 
   influence: (coord): Coordinate[] => Lumberjack.influence(coord),
 
-  productivity: (): number => 1,
+  productivity: () => toProductivity(1),
+  baseProductivity: () => toProductivity(1),
 
   create: (coord) => new TannerInstance(coord),
 };

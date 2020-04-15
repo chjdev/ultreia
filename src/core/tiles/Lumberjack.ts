@@ -1,4 +1,4 @@
-import { StandardTile } from "./Tile";
+import { StandardTile, toProductivity } from "./Tile";
 import { StandardTickingInstance } from "./TickingInstance";
 import { Coordinate } from "../Coordinate";
 import { isBuildable } from "./utils";
@@ -35,7 +35,8 @@ export const Lumberjack: Lumberjack = {
 
   influence: (coord): Coordinate[] => Coordinate.range(coord, 1),
 
-  productivity: (): number => 1,
+  productivity: () => toProductivity(1),
+  baseProductivity: () => toProductivity(1),
 
   create: (coord) => new LumberjackInstance(coord),
 };

@@ -3,6 +3,7 @@ import { StandardTickingInstance } from "./TickingInstance";
 import { InhabitantTile } from "./Inhabitant";
 import { isBuildable } from "./utils";
 import { isCivic } from "./checkers";
+import { toProductivity } from "./Tile";
 
 export type Pioneer = InhabitantTile<
   "Pioneer",
@@ -76,7 +77,10 @@ export const Pioneer: Pioneer = {
     isBuildable(coord) && Coordinate.neighbors(coord).some(isCivic),
 
   influence: (coord): Coordinate[] => Coordinate.range(coord, 4),
-  productivity: (): number => 1,
+
+  productivity: () => toProductivity(1),
+  baseProductivity: () => toProductivity(1),
+
   create: (coord) => new PioneerInstance(coord),
 };
 
