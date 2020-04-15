@@ -497,10 +497,7 @@ export function isConsuming<
   }
   if (isStatefulTile(value)) {
     const consumption = value.consumes;
-    return [...args]
-      .slice(1)
-      .filter((arg) => arg != null)
-      .every((good) => good in consumption);
+    return args.every((good) => good in consumption);
   }
   return false;
 }
@@ -555,10 +552,7 @@ export function isProducing<
   }
   if (isStatefulTile(value)) {
     const production = value.produces;
-    return [...args]
-      .slice(1)
-      .filter((arg) => arg != null)
-      .every((good) => good in production);
+    return args.every((good) => good in production);
   }
   return false;
 }
