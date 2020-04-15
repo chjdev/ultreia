@@ -1,0 +1,57 @@
+{
+  "name": "ultreia",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "fast-deep-equal": "^3.1.1",
+    "phaser": "^3.20.1",
+    "seedrandom": "^3.0.5",
+    "ts-essentials": "^3.0.5"
+  },
+  "main": "main.js",
+  "scripts": {
+    "lint": "eslint . --ext .ts,.tsx --ignore-pattern '**/dist/' --ignore-pattern '**/node_modules/'",
+    "lint:watch": "esw -w . --ext .ts,.tsx --ignore-pattern '**/dist/' --ignore-pattern '**/node_modules/'",
+    "bundle": "browserify build/index.js -t sourceify -d -o dist/game.js",
+    "bundle:watch": "watchify build/index.js -t sourceify -d -o dist/game.js -v",
+    "build": "npm-run-all lint compile bundle",
+    "build:watch": "npm-run-all -p lint:watch compile:watch bundle:watch",
+    "compile": "tsc",
+    "compile:watch": "tsc -w",
+    "test": "",
+    "electron": "electron .",
+    "start": "npm-run-all build && npm-run-all -p build:watch electron"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/jest": "^24.0.18",
+    "@types/node": "^12.7.5",
+    "@types/seedrandom": "^2.4.28",
+    "@typescript-eslint/eslint-plugin": "^2.9.0",
+    "@typescript-eslint/parser": "^2.9.0",
+    "electron": "^7.1.5",
+    "electron-reload": "^1.5.0",
+    "eslint": "^6.3.0",
+    "eslint-config-prettier": "^6.3.0",
+    "eslint-plugin-import": "^2.20.2",
+    "eslint-plugin-jsdoc": "^22.1.0",
+    "eslint-plugin-prettier": "^3.1.0",
+    "eslint-watch": "^6.0.1",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^1.19.1",
+    "sourceify": "^1.0.0",
+    "typescript": "3.7",
+    "watchify": "^3.11.1"
+  }
+}

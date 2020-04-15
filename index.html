@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sample Project</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, user-scalable=no"
+    />
+    <meta http-equiv="cleartype" content="on" />
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+    <style>
+      html,
+      body,
+      canvas {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      div {
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="game"></div>
+    <script async src="./dist/game.js"></script>
+  </body>
+</html>
