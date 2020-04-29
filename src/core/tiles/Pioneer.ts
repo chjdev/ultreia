@@ -3,13 +3,13 @@ import { StandardTickingInstance } from "./TickingInstance";
 import { InhabitantTile } from "./Inhabitant";
 import { isBuildable } from "./utils";
 import { isCivic } from "./checkers";
-import { toProductivity } from "./Tile";
+import { Productivity } from "./Tile";
 
 export type Pioneer = InhabitantTile<
   "Pioneer",
   "Food" | "Leather",
   "Cloth" | "Alcohol" | "Faith",
-  "Money",
+  "Money" | "Pioneer",
   "Money" | "Wood",
   "Money" | "Wood" | "Tool" | "Stone"
 >;
@@ -35,6 +35,7 @@ export const Pioneer: Pioneer = {
   },
   produces: {
     Money: 10,
+    Pioneer: 20,
   },
   costs: {
     Money: 100,
@@ -53,8 +54,10 @@ export const Pioneer: Pioneer = {
     Leather: 0,
     Cloth: 0,
     Alcohol: 0,
+    Pioneer: 2,
   },
   formula: {
+    Pioneer: {},
     Money: [
       {
         Food: 20,
@@ -71,15 +74,14 @@ export const Pioneer: Pioneer = {
       },
     ],
   },
-  maxInhabitants: 20,
 
   allowed: (coord) =>
     isBuildable(coord) && Coordinate.neighbors(coord).some(isCivic),
 
   influence: (coord): Coordinate[] => Coordinate.range(coord, 4),
 
-  productivity: () => toProductivity(1),
-  baseProductivity: () => toProductivity(1),
+  productivity: Productivity.fromStock,
+  baseProductivity: Productivity.simple,
 
   create: (coord) => new PioneerInstance(coord),
 };

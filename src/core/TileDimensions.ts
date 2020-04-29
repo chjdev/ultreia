@@ -8,22 +8,40 @@ import { deepReadonly } from "../utils";
  */
 export type TileAxis = Opaque<"TileAxis", number>;
 
-export const TileAxis = deepReadonly({
+export namespace TileAxis {
   /**
    * Guard for correct tile dimensions.
    *
-   * @param dimension a number greater or equal to 1
-   * @returns the checked tile dimension
+   * @param value a number greater or equal to 1
+   * @returns value is valid TileAxis
    */
-  from: (dimension: number): TileAxis => {
-    if (dimension < 1) {
-      throw new Error(
-        `NumberFormatException: dimension ${dimension} is not greater than one`,
-      );
+  export const isTileAxis = (value: any): value is TileAxis => {
+    return typeof value === "number" && value >= 1;
+  };
+
+  /**
+   * Assert value is valid TileAxis
+   *
+   * @param value a number greater or equal to 1
+   * @throws TypeError
+   */
+  export function assertTileAxis(value: any): asserts value is TileAxis {
+    if (!isTileAxis(value)) {
+      throw new TypeError(`value is not a tile axis ${JSON.stringify(value)}`);
     }
-    return dimension as TileAxis;
-  },
-});
+  }
+
+  /**
+   * Convert number to tile axis
+   *
+   * @param dimension a number greater or equal to 1
+   * @returns the tile axis value
+   */
+  export const fromNumber = (dimension: number): TileAxis => {
+    assertTileAxis(dimension);
+    return dimension;
+  };
+}
 
 export type TileDimensions = Readonly<{
   size: [TileAxis, TileAxis];
@@ -34,7 +52,7 @@ export type TileDimensions = Readonly<{
 }>;
 
 export const TileDimensions: TileDimensions = {
-  size: [TileAxis.from(1), TileAxis.from(1)],
+  size: [TileAxis.fromNumber(1), TileAxis.fromNumber(1)],
   width: () => TileDimensions.size[0],
   height: () => TileDimensions.size[1],
   mapDimensions: (map: MapView = useMapView()): [number, number] =>

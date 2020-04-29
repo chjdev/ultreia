@@ -118,7 +118,12 @@ export const autoTick = <T extends TileKey, C extends Good, P extends Good>(
                     instanceState[good] -= value;
                   }, formula);
                 }
-                instanceState[good] += instance.tile.productivity(instance);
+                instanceState[good] += Number(
+                  (
+                    instance.tile.baseProductivity(instance.coordinate) *
+                    instance.tile.productivity(instance)
+                  ).toPrecision(2),
+                );
                 return true;
               }
               return stillProducing || false;

@@ -9,6 +9,7 @@ import { Mountain } from "./tiles/Mountain";
 import { Water } from "./tiles/Water";
 import { Forest } from "./tiles/Forest";
 import { Grass } from "./tiles/Grass";
+import { isConstructableTileInstance } from "./tiles/Tile";
 
 const traversableChecker = TileChecker.not(TileChecker.create(Mountain, Water));
 /**
@@ -35,7 +36,10 @@ const cost = (map: MapView) => (coord: Coordinate): number => {
   const tile = map.get(coord);
   if (map.roadNetwork.has(coord)) {
     return 0.25;
-  } else if (TileChecker.check(tile, Grass)) {
+  } else if (
+    TileChecker.check(tile, Grass) ||
+    isConstructableTileInstance(tile)
+  ) {
     return 1;
   } else if (TileChecker.check(tile, Forest)) {
     return 2;
@@ -86,16 +90,34 @@ export namespace Road {
     return false;
   };
 
-  const toRoad = (coordinates: readonly Coordinate[]): Road => {
-    if (isRoad(coordinates)) {
-      return coordinates;
-    } else {
-      throw new Error(
-        `RoadError: provided coordinates don't form a road! (road: ${JSON.stringify(
+  /**
+   * Assert the array of coordinates forms a road
+   *
+   * @param coordinates the array of coordinates forming a road
+   * @throws TypeError
+   * @see Road
+   */
+  function assertRoad(
+    coordinates: readonly Coordinate[],
+  ): asserts coordinates is Road {
+    if (!isRoad(coordinates)) {
+      throw new TypeError(
+        `provided coordinates don't form a road! (road: ${JSON.stringify(
           coordinates,
         )}`,
       );
     }
+  }
+
+  /**
+   * Convert array of coordinates to a road
+   *
+   * @param coordinates array of coordinates
+   * @returns a road
+   */
+  const fromCoordinates = (coordinates: readonly Coordinate[]): Road => {
+    assertRoad(coordinates);
+    return coordinates;
   };
 
   /**
@@ -122,7 +144,7 @@ export namespace Road {
     goal: Coordinate,
     map: MapView = useMapView(),
   ): Road =>
-    toRoad(
+    fromCoordinates(
       ShortestPath.search(
         origin,
         goal,
@@ -170,21 +192,46 @@ export namespace Road {
     ) as any) as CircularHash;
   };
 
+  /**
+   * A road type is a specially bit stuffed number.
+   * 1 signify hexagon faces that have a road connection.
+   * For example 0b100001 has a connection between the first and last face.
+   */
   export type Type = Opaque<"RoadType", number>;
-  export const isType = (value: any): value is Type =>
-    typeof value === "number" && value > 0 && (value & 0b111111) === value;
-  export const toType = (value: number): Type => {
-    if (isType(value)) {
-      return value;
-    } else {
-      throw new Error(
-        `RoadError: provided value is not a road type! (value: ${value})`,
-      );
+  export namespace Type {
+    /**
+     * Check whether the value is a road type
+     *
+     * @param value value to check
+     * @returns value is a road type
+     * @see Type
+     */
+    export const isType = (value: any): value is Type =>
+      typeof value === "number" && value > 0 && (value & 0b111111) === value;
+
+    /**
+     * Assert value is a road type
+     *
+     * @param value value to assert
+     * @throws TypeError
+     * @see Type
+     */
+    export function assertType(value: any): asserts value is Type {
+      if (!isType(value)) {
+        throw new TypeError(
+          `provided value is not a road type! (value: ${value})`,
+        );
+      }
     }
-  };
+
+    export const fromNumber = (value: number): Type => {
+      assertType(value);
+      return value;
+    };
+  }
 
   export const type = (...faces: readonly Coordinate.FaceIndex[]): Type =>
-    toType(
+    Type.fromNumber(
       faces.reduce(
         (acc: number, face: Coordinate.FaceIndex) => acc | (1 << face),
         0,
@@ -193,5 +240,5 @@ export namespace Road {
 
   export const allTypes: readonly Type[] = [...Array(Math.pow(2, 6)).keys()]
     .slice(1)
-    .map(toType);
+    .map(Type.fromNumber);
 }

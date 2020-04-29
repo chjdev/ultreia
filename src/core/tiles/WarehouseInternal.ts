@@ -1,6 +1,6 @@
 // Warehouses are relevant in multiple areas (most importantly Territory) and cause cycles
 import { BuildingMaterial, Inventory, ProductionGood, Weapon } from "../Goods";
-import { StandardTile, toProductivity } from "./Tile";
+import { StandardTile, Productivity } from "./Tile";
 import { TileChecker } from "./TileChecker";
 import { Coordinate } from "../Coordinate";
 
@@ -194,6 +194,6 @@ export const Warehouse: Omit<Warehouse, "create"> = {
 
   influence: (coord): Coordinate[] => Coordinate.range(coord, 10),
 
-  productivity: () => toProductivity(1),
-  baseProductivity: () => toProductivity(1),
+  productivity: Productivity.simple,
+  baseProductivity: Productivity.simple,
 };

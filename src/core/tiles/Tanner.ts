@@ -1,4 +1,4 @@
-import { StandardTile, toProductivity } from "./Tile";
+import { StandardTile, Productivity } from "./Tile";
 import { Coordinate } from "../Coordinate";
 import { Lumberjack } from "./Lumberjack";
 import { StandardTickingInstance } from "./TickingInstance";
@@ -6,14 +6,15 @@ import { isBuildable } from "./utils";
 
 export type Tanner = StandardTile<
   "Tanner",
-  "RawHide",
+  "RawHide" | "Money",
   "Leather",
   "Wood" | "Tool" | "Money"
 >;
 export const Tanner: Tanner = {
   tag: "Tanner",
   consumes: {
-    RawHide: 10,
+    RawHide: 20,
+    Money: 20,
   },
   produces: {
     Leather: 5,
@@ -26,10 +27,12 @@ export const Tanner: Tanner = {
   initialState: {
     Leather: 0,
     RawHide: 0,
+    Money: 0,
   },
   formula: {
     Leather: {
       RawHide: 2,
+      Money: 2,
     },
   },
 
@@ -37,8 +40,8 @@ export const Tanner: Tanner = {
 
   influence: (coord): Coordinate[] => Lumberjack.influence(coord),
 
-  productivity: () => toProductivity(1),
-  baseProductivity: () => toProductivity(1),
+  productivity: Productivity.fromStock,
+  baseProductivity: Productivity.simple,
 
   create: (coord) => new TannerInstance(coord),
 };

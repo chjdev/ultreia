@@ -25,12 +25,22 @@ type Context =
   | SelectContextEvent["context"];
 export type ContextEvent = _ContextEvent<Context>;
 
+/**
+ * Assert a value is a build context event
+ *
+ * @param event the event to assert
+ * @throws TypeError
+ * @see BuildContextEvent
+ */
 export function assertBuildContextEvent(
   event: any,
 ): asserts event is BuildContextEvent {
-  if (event.event === "build" && !isConstructableTileKey(event.tile)) {
-    throw new Error(
-      `TypeAssertionError: ${event.tile} is not a constructable tile key!`,
+  if (event.event !== "context" || event.context !== "build") {
+    throw new TypeError(`Not a build context event ${JSON.stringify(event)}`);
+  }
+  if (!isConstructableTileKey(event.tile)) {
+    throw new TypeError(
+      `Invalid build context event, ${event.tile} is not a constructable tile key!`,
     );
   }
 }

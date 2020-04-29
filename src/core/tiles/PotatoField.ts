@@ -1,4 +1,4 @@
-import { StandardTile, toProductivity } from "./Tile";
+import { StandardTile, Productivity } from "./Tile";
 import { Coordinate } from "../Coordinate";
 import { Inventory } from "../Goods";
 import { StandardTickingInstance } from "./TickingInstance";
@@ -31,8 +31,8 @@ export const PotatoField: PotatoField = {
 
   influence: (coord): Coordinate[] => SheepFarm.influence(coord),
 
-  productivity: () => toProductivity(1),
-  baseProductivity: () => toProductivity(1),
+  productivity: Productivity.simple,
+  baseProductivity: Productivity.simple,
 
   create: (coord) => new PotatoFieldInstance(coord),
 };

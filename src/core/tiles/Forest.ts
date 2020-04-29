@@ -1,4 +1,4 @@
-import { StandardTile, toProductivity } from "./Tile";
+import { StandardTile, Productivity } from "./Tile";
 import { Coordinate } from "../Coordinate";
 import { StandardTickingInstance } from "./TickingInstance";
 import { isBuildable } from "./utils";
@@ -33,8 +33,12 @@ export const Forest: Forest = {
 
   influence: (coord): Coordinate[] => Coordinate.range(coord, 1),
 
-  productivity: () => toProductivity(1),
-  baseProductivity: () => toProductivity(1),
+  productivity: Productivity.simple,
+  baseProductivity: (coord) =>
+    Productivity.max(
+      0.5,
+      Productivity.fromTileReachability(Forest, Forest, coord, 3),
+    ),
 
   create: (coord) => new ForestInstance(coord),
 };

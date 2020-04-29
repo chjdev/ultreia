@@ -50,8 +50,8 @@ const asIconSprite = asSpriteImage<IconSprite>();
 export const IconSprites: IconSprites = {
   frameWidth: 34,
   frameHeight: 34,
-  width: TileAxis.from(34),
-  height: TileAxis.from(34),
+  width: TileAxis.fromNumber(34),
+  height: TileAxis.fromNumber(34),
   cx: 17,
   cy: 17,
   margin: deepReadonly({

@@ -9,7 +9,7 @@ import {
 import { useMapView } from "../MatchContext";
 import { TileKey } from "./index";
 
-export interface TileChecker<T extends Tile> {
+export interface TileChecker<T extends Tile<TileKey>> {
   (coord: Coordinate): boolean;
 
   (tile: Tile | null | undefined): tile is T;
@@ -22,15 +22,15 @@ export interface TileChecker<T extends Tile> {
 }
 
 export namespace TileChecker {
-  export function check<T extends Tile>(
+  export function check<T extends Tile<TileKey>>(
     coord: Coordinate,
     tag: T["tag"] | T,
   ): boolean;
-  export function check<T extends Tile>(
+  export function check<T extends Tile<TileKey>>(
     tile: Tile | null | undefined,
     tag: T["tag"] | T,
   ): tile is T;
-  export function check<T extends Tile>(
+  export function check<T extends Tile<TileKey>>(
     tileInstance: TileInstance | null | undefined,
     tag: T["tag"] | T,
   ): tileInstance is TileInstanceFor<T>;
@@ -57,24 +57,26 @@ export namespace TileChecker {
     }
   }
 
-  export function create<T extends Tile>(tag: T["tag"] | T): TileChecker<T>;
+  export function create<T extends Tile<TileKey>>(
+    tag: T["tag"] | T,
+  ): TileChecker<T>;
   export function create(
-    tag1: TileKey | Tile,
-    tag2: TileKey | Tile,
-    ...rest: readonly (TileKey | Tile)[]
-  ): TileChecker<Tile>;
+    tag1: TileKey | Tile<TileKey>,
+    tag2: TileKey | Tile<TileKey>,
+    ...rest: readonly (TileKey | Tile<TileKey>)[]
+  ): TileChecker<Tile<TileKey>>;
   export function create(
-    tag1: TileKey | Tile,
-    tag2?: TileKey | Tile,
-    ...rest: readonly (TileKey | Tile)[]
-  ): TileChecker<Tile> {
+    tag1: TileKey | Tile<TileKey>,
+    tag2?: TileKey | Tile<TileKey>,
+    ...rest: readonly (TileKey | Tile<TileKey>)[]
+  ): TileChecker<Tile<TileKey>> {
     return ((arg: any) =>
       [tag1, tag2, ...rest]
         .filter((tag): tag is TileKey | Tile => tag != null)
         .some((tag) => check(arg, tag))) as TileChecker<Tile>;
   }
 
-  export const not = <T extends Tile>(
+  export const not = <T extends Tile<TileKey>>(
     checker: TileChecker<T>,
   ): TileChecker<T> => ((arg: any) => !checker(arg)) as TileChecker<T>;
 }

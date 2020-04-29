@@ -1,7 +1,8 @@
-import { StandardTile, toProductivity } from "./Tile";
+import { StandardTile, Productivity } from "./Tile";
 import { StandardTickingInstance } from "./TickingInstance";
 import { Coordinate } from "../Coordinate";
 import { isBuildable } from "./utils";
+import { Forest } from "./Forest";
 
 export type Lumberjack = StandardTile<
   "Lumberjack",
@@ -35,8 +36,14 @@ export const Lumberjack: Lumberjack = {
 
   influence: (coord): Coordinate[] => Coordinate.range(coord, 1),
 
-  productivity: () => toProductivity(1),
-  baseProductivity: () => toProductivity(1),
+  productivity: Productivity.fromStock,
+  baseProductivity: (coord) =>
+    Productivity.fromTileReachability<Lumberjack, Forest>(
+      Lumberjack,
+      "Forest",
+      coord,
+      3,
+    ),
 
   create: (coord) => new LumberjackInstance(coord),
 };

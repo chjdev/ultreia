@@ -1,11 +1,12 @@
-import { StandardTile, toProductivity } from "./Tile";
+import { StandardTile, Productivity } from "./Tile";
 import { Coordinate } from "../Coordinate";
 import { StandardTickingInstance } from "./TickingInstance";
 import { isBuildable } from "./utils";
+import { PotatoField } from "./PotatoField";
 
 export type PotatoFarm = StandardTile<
   "PotatoFarm",
-  "PotatoPlant",
+  "PotatoPlant" | "Money",
   "Potato",
   "Money" | "Wood" | "Tool"
 >;
@@ -13,6 +14,7 @@ export const PotatoFarm: PotatoFarm = {
   tag: "PotatoFarm",
   consumes: {
     PotatoPlant: 20,
+    Money: 20,
   },
   produces: {
     Potato: 10,
@@ -25,10 +27,12 @@ export const PotatoFarm: PotatoFarm = {
   initialState: {
     PotatoPlant: 0,
     Potato: 0,
+    Money: 0,
   },
   formula: {
     Potato: {
       PotatoPlant: 2,
+      Money: 2,
     },
   },
 
@@ -36,8 +40,14 @@ export const PotatoFarm: PotatoFarm = {
 
   influence: (coord): Coordinate[] => Coordinate.range(coord, 3),
 
-  productivity: () => toProductivity(1),
-  baseProductivity: () => toProductivity(1),
+  productivity: Productivity.fromStock,
+  baseProductivity: (coord) =>
+    Productivity.fromTileReachability<PotatoFarm, PotatoField>(
+      PotatoFarm,
+      "PotatoField",
+      coord,
+      2,
+    ),
 
   create: (coord) => new PotatoFarmInstance(coord),
 };

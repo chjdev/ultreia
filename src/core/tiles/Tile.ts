@@ -1,8 +1,9 @@
 import { Coordinate } from "../Coordinate";
-import { CostGood, Good, InventoryView } from "../Goods";
+import { CostGood, Good, Inventory, InventoryView } from "../Goods";
 import { TileKey } from "./index";
 import { Opaque, Writable } from "ts-essentials";
 import { Constructor1 } from "../../utils";
+import { TileChecker } from "./TileChecker";
 
 /**
  * Base interface for all Tiles. A Tile is a tagged configuration of a world map element.
@@ -133,41 +134,113 @@ type StateGoods<
  * with a number in [0., 1.]
  */
 export type Productivity = Opaque<"Productivity", number>;
-/**
- * Type guard for productivities
- *
- * @param value the value to test
- * @returns value is a Productivity
- * @see Productivity
- */
-export const isProductivity = (value: any): value is Productivity =>
-  typeof value === "number" && value >= 0 && value <= 1;
-/**
- * Type assertion for productivities
- *
- * @param value the value to assert
- * @see Productivity
- */
-export function assertProductivity(value: any): asserts value is Productivity {
-  if (!isProductivity(value)) {
-    throw new Error(
-      `TypeError: provided value ${JSON.stringify(
-        value,
-      )} is not a productivity value.`,
+
+export namespace Productivity {
+  /**
+   * Type guard for productivities
+   *
+   * @param value the value to test
+   * @returns value is a Productivity
+   * @see Productivity
+   */
+  export const isProductivity = (value: any): value is Productivity =>
+    typeof value === "number" && value >= 0 && value <= 1;
+
+  /**
+   * Type assertion for productivities
+   *
+   * @param value the value to assert
+   * @throws TypeError
+   * @see Productivity
+   */
+  export function assertProductivity(
+    value: any,
+  ): asserts value is Productivity {
+    if (!isProductivity(value)) {
+      throw new TypeError(
+        `provided value ${JSON.stringify(value)} is not a productivity value.`,
+      );
+    }
+  }
+
+  /**
+   * Safely convert number ot Productivity
+   *
+   * @param value the number to convert
+   * @returns the converted productivity
+   * @see Productivity
+   */
+  export const fromNumber = (value: number): Productivity => {
+    assertProductivity(value);
+    return value;
+  };
+
+  /**
+   * Calculate the max productivity.
+   *
+   * @param productivities the productivities to compare
+   * @returns the maximum of the provided productivities
+   * @see Math.max
+   */
+  export const max = (
+    ...productivities: readonly (Productivity | number)[]
+  ): Productivity => Productivity.fromNumber(Math.max(...productivities));
+
+  /**
+   * @returns a simple 1.0 productivity
+   */
+  export const simple = (): Productivity => fromNumber(1);
+
+  /**
+   * Calculate a productivity based on the amount of the consumption stock.
+   *
+   * @param instance a stateful instance to check.
+   * @returns productivity based on amount of consumption stock.
+   */
+  export const fromStock = (
+    instance: StatefulTileInstance<any, any, any>,
+  ): Productivity =>
+    fromNumber(
+      Inventory.reduce(
+        (acc, consumes, good) => acc * (instance.state[good] / consumes),
+        1.0,
+        instance.tile.consumes,
+      ),
+    );
+
+  /**
+   * Calculate productivity from reachable tiles.
+   *
+   * @param fromTile the tile for witch to create the tile reachability
+   * @param reachableTile the tile to search for
+   * @param coord the coordinate to check from.
+   * @param scale (optional) the scale factor to use for the productivity, e.g.
+   *  2 means 1 reachable -> 50%, 2 reachable -> 100%. must be >= 1.0 (default: 1.0)
+   * @returns a productivity based on reachable tiles.
+   */
+  export function fromTileReachability<
+    F extends Tile & WithInfluence,
+    T extends Tile<TileKey>
+  >(
+    fromTile: F,
+    reachableTile: T | T["tag"],
+    coord: Coordinate,
+    scale: number = 1,
+  ): Productivity {
+    if (scale < 1) {
+      throw new RangeError(`scale factor ${JSON.stringify(scale)} < 1`);
+    }
+    return Productivity.fromNumber(
+      Math.min(
+        1.0,
+        fromTile
+          .influence(coord)
+          .filter((coord) => TileChecker.check<T>(coord, reachableTile))
+          .length / scale,
+      ),
     );
   }
 }
-/**
- * Safely convert number ot Productivity
- *
- * @param value the number to convert
- * @returns the converted productivity
- * @see Productivity
- */
-export const toProductivity = (value: number): Productivity => {
-  assertProductivity(value);
-  return value;
-};
 
 /**
  * A stateful Tile is a tile that consumes and produces goods according to a formula
@@ -365,6 +438,11 @@ export const ConstructableTileInstance = <
   };
 };
 
+export const isConstructableTileInstance = (
+  value: any,
+): value is ConstructableTileInstance<any, any> =>
+  isTileInstance(value) && isConstructableTile(value.tile);
+
 export type InventoryViewFor<
   T extends StatefulTile<any, any, any>,
   E = void
@@ -402,7 +480,9 @@ export const StatefulTileInstance = <
 export const isStatefulTileInstance = (
   value: any,
 ): value is StatefulTileInstance<any, any, any> =>
-  typeof value?.state === "object" && isTileInstance(value);
+  typeof value?.state === "object" &&
+  isTileInstance(value) &&
+  isStatefulTile(value.tile);
 
 export interface StandardTileInstance<
   T extends TileKey,

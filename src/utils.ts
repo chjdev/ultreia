@@ -30,7 +30,7 @@ export const expect = <T>(value: T | null | undefined, msg?: string): T => {
           ? "undefined"
           : "null"
         : msg;
-    throw new Error("ExpectError: " + msg);
+    throw new TypeError(msg);
   }
   return value;
 };

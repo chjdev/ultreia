@@ -145,8 +145,8 @@ const asTileSprite = asSpriteImage<TileSprite>();
 export const TileSprites: TileSprites = {
   frameWidth: 256,
   frameHeight: 384,
-  width: TileAxis.from(256),
-  height: TileAxis.from(256),
+  width: TileAxis.fromNumber(256),
+  height: TileAxis.fromNumber(256),
   cx: 128,
   cy: 256,
   margin: deepReadonly({

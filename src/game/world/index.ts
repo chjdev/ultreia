@@ -59,7 +59,7 @@ export class WorldScene extends Phaser.Scene {
       const wz =
         frame === "Water" ? -0.02 * useTileDimensionsView().width() : 0;
       const tile = TileSprites.add(this, wx, wy - wz, frame);
-      tile.setDepth(wy - wz);
+      tile.setDepth(wy + wz);
       tile.setActive(false);
       tile.setVisible(false);
       this.groundTiles.set(coord, tile);
@@ -103,7 +103,7 @@ export class WorldScene extends Phaser.Scene {
           "Road",
           roadVariant(roadType),
         );
-        added.depth = wy + 10;
+        added.depth = wy + 1;
         this.roadTiles.set(coord, added);
       }
     }, RoadNetworkEvent.all);

@@ -1,11 +1,12 @@
-import { StandardTile, toProductivity } from "./Tile";
+import { StandardTile, Productivity } from "./Tile";
 import { Coordinate } from "../Coordinate";
 import { StandardTickingInstance } from "./TickingInstance";
 import { isBuildable } from "./utils";
+import { SheepPasture } from "./SheepPasture";
 
 export type SheepFarm = StandardTile<
   "SheepFarm",
-  "Sheep",
+  "Sheep" | "Money",
   "Wool",
   "Money" | "Wood" | "Tool"
 >;
@@ -13,6 +14,7 @@ export const SheepFarm: SheepFarm = {
   tag: "SheepFarm",
   consumes: {
     Sheep: 20,
+    Money: 20,
   },
   produces: {
     Wool: 10,
@@ -25,10 +27,12 @@ export const SheepFarm: SheepFarm = {
   initialState: {
     Sheep: 0,
     Wool: 0,
+    Money: 0,
   },
   formula: {
     Wool: {
       Sheep: 2,
+      Money: 2,
     },
   },
 
@@ -36,8 +40,14 @@ export const SheepFarm: SheepFarm = {
 
   influence: (coord): Coordinate[] => Coordinate.range(coord, 3),
 
-  productivity: () => toProductivity(1),
-  baseProductivity: () => toProductivity(1),
+  productivity: Productivity.fromStock,
+  baseProductivity: (coord) =>
+    Productivity.fromTileReachability<SheepFarm, SheepPasture>(
+      SheepFarm,
+      "SheepPasture",
+      coord,
+      2,
+    ),
 
   create: (coord) => new SheepFarmInstance(coord),
 };

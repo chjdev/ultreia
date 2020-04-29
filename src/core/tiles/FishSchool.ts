@@ -1,4 +1,4 @@
-import { StatefulTile, toProductivity } from "./Tile";
+import { StatefulTile, Productivity } from "./Tile";
 import { StatefulTickingInstance } from "./TickingInstance";
 import { Coordinate } from "../Coordinate";
 import { Inventory } from "../Goods";
@@ -14,11 +14,11 @@ export const FishSchool: FishSchool = {
     WildFish: 0,
   },
   formula: {
-    WildFish: Inventory.NOTHING,
+    WildFish: {},
   },
 
-  productivity: () => toProductivity(1),
-  baseProductivity: () => toProductivity(1),
+  productivity: Productivity.simple,
+  baseProductivity: Productivity.simple,
 
   influence: (coord): Coordinate[] => [coord],
 
