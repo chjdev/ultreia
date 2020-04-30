@@ -1,7 +1,6 @@
 import { DeepReadonly, Opaque } from "ts-essentials";
 import { MapView } from "./WorldMap";
 import { useMapView } from "./MatchContext";
-import { deepReadonly } from "../utils";
 
 /**
  * Represents a number that's greater or equal to 1
