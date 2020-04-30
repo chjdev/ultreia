@@ -16,8 +16,8 @@ enum _MenuKey {
   DiplomacyMenu,
 }
 
-type MenuKey = keyof typeof _MenuKey;
-const MenuKeys = Object.keys(_MenuKey).filter((key) =>
+export type MenuKey = keyof typeof _MenuKey;
+export const MenuKeys = Object.keys(_MenuKey).filter((key) =>
   isNaN(Number(key)),
 ) as readonly MenuKey[];
 type FrameKey = Exclude<Good, "Nothing"> | MenuKey;

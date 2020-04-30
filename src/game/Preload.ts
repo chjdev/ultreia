@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import { WorldScene } from "./world";
-import { MenuScene } from "./Menu";
+import { MenuScene } from "./menu";
 import { MatchManager } from "../core/MatchManager";
 import { TileSprites } from "./sprites/TileSprites";
 import { Sounds } from "./Sounds";
