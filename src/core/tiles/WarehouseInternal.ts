@@ -1,18 +1,35 @@
 // Warehouses are relevant in multiple areas (most importantly Territory) and cause cycles
-import { BuildingMaterial, Inventory, ProductionGood, Weapon } from "../Goods";
+import {
+  BuildingMaterial,
+  BuildingMaterials,
+  Good,
+  Inventory,
+  ProductionGood,
+  ProductionGoods,
+  Weapon,
+  Weapons,
+} from "../Goods";
 import { StandardTile, Productivity } from "./Tile";
 import { TileChecker } from "./TileChecker";
 import { Coordinate } from "../Coordinate";
 
-export type WarehouseGoods =
+export type WarehouseGood =
   | BuildingMaterial
   | ProductionGood
   | Weapon
   | "Money";
+export const WarehouseGoods: readonly WarehouseGood[] = [
+  ...BuildingMaterials,
+  ...ProductionGoods,
+  ...Weapons,
+  "Money",
+];
+export const isWarehouseGood = (good: Good): good is WarehouseGood =>
+  (WarehouseGoods as string[]).includes(good);
 
 export type Warehouse = StandardTile<
   "Warehouse",
-  WarehouseGoods,
+  WarehouseGood,
   "Nothing",
   "Money" | "Wood" | "Tool"
 >;

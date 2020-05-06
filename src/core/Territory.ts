@@ -1,15 +1,16 @@
-import { Warehouse } from "./tiles/WarehouseInternal";
-import { InventoryFor, TileInstance, TileInstanceFor } from "./tiles/Tile";
+import { isWarehouseGood, Warehouse } from "./tiles/WarehouseInternal";
+import { TileInstance, TileInstanceFor } from "./tiles/Tile";
 import { MapEvent, MapView } from "./WorldMap";
 import { Coordinate, CoordinateIndexed } from "./Coordinate";
 import { RemoveListener } from "./Observable";
 import { useMapView } from "./MatchContext";
 import { isWarehouse } from "./tiles/checkers";
+import { Inventory } from "./Goods";
 
 type WarehouseInstanceView = Readonly<TileInstanceFor<Warehouse>>;
 
 export interface Territory {
-  readonly state: InventoryFor<Warehouse>;
+  readonly state: Inventory;
 
   warehouses(): WarehouseInstanceView[];
 
@@ -17,46 +18,56 @@ export interface Territory {
 }
 
 export abstract class Territory {
-  private current(prop: keyof InventoryFor<Warehouse>): number {
-    return this.warehouses().reduce(
-      (acc: number, warehouse: WarehouseInstanceView) => {
-        acc += warehouse.state[prop];
-        return acc;
-      },
-      0,
-    );
+  private current(prop: keyof Inventory): number {
+    if (isWarehouseGood(prop)) {
+      return this.warehouses().reduce(
+        (acc: number, warehouse: WarehouseInstanceView) => {
+          acc += warehouse.state[prop];
+          return acc;
+        },
+        0,
+      );
+    } else {
+      return -1;
+    }
   }
 
-  public readonly state = new Proxy(Warehouse.initialState, {
-    get: (_: InventoryFor<Warehouse>, prop: keyof InventoryFor<Warehouse>) =>
-      this.current(prop),
-    set: (
-      _: InventoryFor<Warehouse>,
-      prop: keyof InventoryFor<Warehouse>,
-      value: number,
-    ): boolean => {
-      let diff = this.current(prop) - value;
-      if (diff === 0) {
-        return true;
-      }
-      const warehouses = this.warehouses();
-      let nextWarehouse = warehouses.pop();
-      while (diff > 0 && nextWarehouse != null) {
-        const state = nextWarehouse.state;
-        if (state[prop] >= diff) {
-          state[prop] -= diff;
-          diff = 0;
-        } else {
-          diff -= state[prop];
-          state[prop] = 0;
+  public readonly state = new Proxy(
+    // we're not working on an object
+    ({} as any) as Inventory,
+    {
+      get: (_: Inventory, prop: keyof Inventory) => this.current(prop),
+      set: (_: Inventory, prop: keyof Inventory, value: number): boolean => {
+        let diff = this.current(prop) - value;
+        if (diff === 0) {
+          return true;
         }
-        nextWarehouse = warehouses.pop();
-      }
-      //todo positive number constraint?
-      console.assert(diff === 0, `state would go negative! ${prop} ${value}`);
-      return diff === 0;
+        if (isWarehouseGood(prop)) {
+          const warehouses = this.warehouses();
+          let nextWarehouse = warehouses.pop();
+          while (diff > 0 && nextWarehouse != null) {
+            const state = nextWarehouse.state;
+            if (state[prop] >= diff) {
+              state[prop] -= diff;
+              diff = 0;
+            } else {
+              diff -= state[prop];
+              state[prop] = 0;
+            }
+            nextWarehouse = warehouses.pop();
+          }
+          //todo positive number constraint?
+          console.assert(
+            diff === 0,
+            `state would go negative! ${prop} ${value}`,
+          );
+          return diff === 0;
+        } else {
+          return true;
+        }
+      },
     },
-  });
+  );
 }
 
 export namespace Territory {

@@ -1,22 +1,33 @@
 import { RexUIScene } from "./common";
 import { addMenu, Menu } from "./menu";
-import { BuildingMaterials, ProductionGoods, Weapons } from "../../core/Goods";
+import {
+  BuildingMaterials,
+  Good,
+  HarvestableGoods,
+  ImmaterialGoods,
+  Inhabitants,
+  NaturalGoods,
+  ProductionGoods,
+  Weapons,
+} from "../../core/Goods";
 import { IconSprites } from "../sprites/IconSprites";
-import { WarehouseGoods } from "../../core/tiles/WarehouseInternal";
-import { Dictionary } from "ts-essentials";
 import { TileInstance, TileInstanceFor } from "../../core/tiles/Tile";
 import { Warehouse } from "../../core/tiles/Warehouse";
 import Phaser from "phaser";
 import { Territory } from "../../core/Territory";
 import { AssertionError } from "assert";
 
-const tabs: Dictionary<readonly WarehouseGoods[]> = {
-  Build: BuildingMaterials,
-  Prod: ProductionGoods,
-  Weap: Weapons,
+const tabs: Record<string, readonly Exclude<Good, "Nothing">[]> = {
+  Building: BuildingMaterials,
+  Immaterial: ImmaterialGoods,
+  Harvestable: HarvestableGoods,
+  Production: ProductionGoods,
+  Weapons,
+  Inhabitants,
+  Natural: NaturalGoods,
 };
 
-export interface WarehouseInfoMenu {
+export interface TerritoryInfoMenu {
   showInfoMenu(tileInstance?: TileInstance): void;
 
   hideInfoMenu(): void;
@@ -24,10 +35,10 @@ export interface WarehouseInfoMenu {
   close(): void;
 }
 
-export const addWarehouseMenu = (
+export const addTerritoryMenu = (
   scene: RexUIScene,
 ): //todo get better types
-WarehouseInfoMenu => {
+TerritoryInfoMenu => {
   let menu:
     | (Phaser.GameObjects.Container & {
         clear: (destroy?: boolean) => void;
@@ -49,7 +60,6 @@ WarehouseInfoMenu => {
     if (territory == null) {
       throw new AssertionError({ message: "territory shouldn't be null here" });
     }
-    const numWarehouses = territory.warehouses().length;
     menu = addMenu(
       scene,
       Object.fromEntries<Menu>(
@@ -57,8 +67,7 @@ WarehouseInfoMenu => {
           tab,
           tabs[tab].map((good) => ({
             icon: () => IconSprites.add(scene, 0, 0, good),
-            text: `${territory.state[good]}/${Warehouse.consumes[good] *
-              numWarehouses}`,
+            text: `${territory.state[good]}`,
           })),
         ]),
       ),

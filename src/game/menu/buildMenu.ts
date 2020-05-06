@@ -2,7 +2,7 @@ import { TileSprites } from "../sprites/TileSprites";
 import { RexUIScene } from "./common";
 import { ConstructableTileKeys } from "../../core/tiles";
 import { addMenu, TabbedMenu } from "./menu";
-import { Dictionary, DictionaryValues } from "ts-essentials";
+import { DictionaryValues } from "ts-essentials";
 
 type MenuItem = "Road" | ConstructableTileKeys;
 type MenuItems = readonly MenuItem[];
@@ -26,7 +26,7 @@ const Farms: MenuItems = [
 ];
 const Crafts: MenuItems = ["Tanner", "Distillery", "Weaver"];
 
-const tabs: Dictionary<MenuItems> = { Civics, Farms, Crafts };
+const tabs: Record<string, MenuItems> = { Civics, Farms, Crafts };
 
 export const addBuildMenu = (
   scene: RexUIScene,

@@ -13,8 +13,8 @@ import {
   useMapView,
 } from "../../core/MatchContext";
 import { InteractionEvent } from "../../core/Interaction";
-import { addWarehouseMenu, WarehouseInfoMenu } from "./warehouseMenu";
 import { isWarehouse } from "../../core/tiles/checkers";
+import { addTerritoryMenu, TerritoryInfoMenu } from "./territoryMenu";
 
 const sceneConfig: Phaser.Types.Scenes.SettingsConfig = {
   active: true,
@@ -46,13 +46,13 @@ export class MenuScene extends Phaser.Scene {
   private productionInfoMenu: ProductionInfoMenu | null = null;
   private resourceMenu: Phaser.GameObjects.Group | null = null;
   private buildMenu: Phaser.GameObjects.Container | null = null;
-  private warehouseMenu: WarehouseInfoMenu | null = null;
+  private territoryMenu: TerritoryInfoMenu | null = null;
   private actionMenu: Phaser.GameObjects.Container | null = null;
 
   public create() {
     this.resourceMenu = addResourceMenu(this);
     this.productionInfoMenu = addProductionInfoMenu(this);
-    this.warehouseMenu = addWarehouseMenu(this);
+    this.territoryMenu = addTerritoryMenu(this);
     useInteractionView().listen<InteractionEvent>(({ coordinate, context }) => {
       if (context !== "select") {
         return;
@@ -64,7 +64,7 @@ export class MenuScene extends Phaser.Scene {
 
         if (isWarehouse(tileInstance)) {
           this.actionMenu?.setVisible(false);
-          this.warehouseMenu?.showInfoMenu(tileInstance);
+          this.territoryMenu?.showInfoMenu(tileInstance);
         } else {
           this.actionMenu?.setVisible(true);
           this.productionInfoMenu?.showInfoMenu(tileInstance);
@@ -74,7 +74,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.buildMenu = addBuildMenu(this, (evt) => {
       this.buildMenu?.setVisible(false);
-      this.warehouseMenu?.hideInfoMenu();
+      this.territoryMenu?.hideInfoMenu();
       this.actionMenu?.setVisible(true);
       this.productionInfoMenu?.hideInfoMenu();
       if (evt === "Road") {
@@ -93,12 +93,12 @@ export class MenuScene extends Phaser.Scene {
           this.buildMenu?.setVisible(false);
           this.productionInfoMenu?.hideInfoMenu();
           this.actionMenu?.setVisible(false);
-          this.warehouseMenu?.showInfoMenu();
+          this.territoryMenu?.showInfoMenu();
           break;
         default:
           this.buildMenu?.setVisible(true);
           this.actionMenu?.setVisible(false);
-          this.warehouseMenu?.hideInfoMenu();
+          this.territoryMenu?.hideInfoMenu();
           this.productionInfoMenu?.hideInfoMenu();
       }
     });
@@ -107,7 +107,7 @@ export class MenuScene extends Phaser.Scene {
       if (elements.length === 0) {
         // clicked outside
         this.buildMenu?.setVisible(false);
-        this.warehouseMenu?.hideInfoMenu();
+        this.territoryMenu?.hideInfoMenu();
         this.actionMenu?.setVisible(true);
         this.productionInfoMenu?.hideInfoMenu();
       }

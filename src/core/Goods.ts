@@ -226,10 +226,14 @@ export const Goods: readonly Exclude<Good, "Nothing">[] = [
 export type CostGood = BuildingMaterial | "Money";
 export const CostGoods: readonly CostGood[] = [...BuildingMaterials, "Money"];
 
-export type Inventory<G extends Good, T = number> = Record<G, T>;
-export type InventoryView<G extends Good = Good, T = number> = Readonly<
-  Inventory<G, T>
->;
+export type Inventory<
+  G extends Good = Exclude<Good, "Nothing">,
+  T = number
+> = Record<G, T>;
+export type InventoryView<
+  G extends Good = Exclude<Good, "Nothing">,
+  T = number
+> = Readonly<Inventory<G, T>>;
 
 export namespace Inventory {
   export const goods = <G extends Good, T = number>(
