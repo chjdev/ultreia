@@ -9,12 +9,7 @@ import { TileSprites } from "../sprites/TileSprites";
 import { Good, Inventory } from "../../core/Goods";
 import { IconSprites } from "../sprites/IconSprites";
 import { TileChecker } from "../../core/tiles/TileChecker";
-import {
-  useClockView,
-  useInteractionView,
-  useMapView,
-} from "../../core/MatchContext";
-import { InteractionEvent } from "../../core/Interaction";
+import { useClockView } from "../../core/MatchContext";
 import { TickEvent } from "../../core/Tick";
 
 const createProductionInfoView = (
@@ -164,7 +159,9 @@ const createProductionInfoView = (
 
 export interface ProductionInfoMenu {
   showInfoMenu(tileInstance: TileInstance): void;
+
   hideInfoMenu(): void;
+
   close(): void;
 }
 

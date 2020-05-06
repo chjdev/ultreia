@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import { IconSpriteKeys, IconSprites } from "../sprites/IconSprites";
-import { MarkOptional } from "ts-essentials";
 
 export type RexUIScene = Phaser.Scene & { readonly rexUI: any };
 
