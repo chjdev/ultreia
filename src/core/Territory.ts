@@ -1,11 +1,17 @@
 import { isWarehouseGood, Warehouse } from "./tiles/WarehouseInternal";
-import { TileInstance, TileInstanceFor } from "./tiles/Tile";
+import {
+  isProducing,
+  StatefulTileInstance,
+  TileInstance,
+  TileInstanceFor,
+} from "./tiles/Tile";
 import { MapEvent, MapView } from "./WorldMap";
 import { Coordinate, CoordinateIndexed } from "./Coordinate";
 import { RemoveListener } from "./Observable";
 import { useMapView } from "./MatchContext";
 import { isWarehouse } from "./tiles/checkers";
 import { Inventory } from "./Goods";
+import { AssertionError } from "assert";
 
 type WarehouseInstanceView = Readonly<TileInstanceFor<Warehouse>>;
 
@@ -15,20 +21,55 @@ export interface Territory {
   warehouses(): WarehouseInstanceView[];
 
   has(warehouse: WarehouseInstanceView): boolean;
+
+  influence(): Coordinate[];
+  forEach(fun: (coord: Coordinate) => void): void;
+  map<U>(fun: (coord: Coordinate) => U): U[];
+  reduce<R>(fun: (acc: R, coord: Coordinate) => R, zero: R): R;
+  filter(fun: (coord: Coordinate) => boolean): Coordinate[];
 }
 
-export abstract class Territory {
-  private current(prop: keyof Inventory): number {
-    if (isWarehouseGood(prop)) {
+export abstract class Territory implements Territory {
+  public influence(): Coordinate[] {
+    const coordSet = new Set<Coordinate.Hash>();
+    return this.warehouses().flatMap((warehouse) => {
+      const influence = Warehouse.influence(
+        warehouse.coordinate,
+      ).filter((coord) => coordSet.has(Coordinate.hashCode(coord)));
+      influence
+        .map(Coordinate.hashCode)
+        .forEach((coord) => coordSet.add(coord));
+      return influence;
+    });
+  }
+  public forEach(fun: (coord: Coordinate) => void): void {
+    this.influence().forEach(fun);
+  }
+  public map<U>(fun: (coord: Coordinate) => U): U[] {
+    return this.influence().map(fun);
+  }
+  public reduce<R>(fun: (acc: R, coord: Coordinate) => R, zero: R): R {
+    return this.influence().reduce(fun, zero);
+  }
+  public filter(fun: (coord: Coordinate) => boolean): Coordinate[] {
+    return this.influence().filter(fun);
+  }
+  private current(good: keyof Inventory): number {
+    if (isWarehouseGood(good)) {
       return this.warehouses().reduce(
         (acc: number, warehouse: WarehouseInstanceView) => {
-          acc += warehouse.state[prop];
+          acc += warehouse.state[good];
           return acc;
         },
         0,
       );
     } else {
-      return -1;
+      return this.map((coord) => useMapView().get(coord))
+        .filter(
+          (instance): instance is StatefulTileInstance<any, typeof good, any> =>
+            instance != null && isProducing(instance, good),
+        )
+        .reduce((sum, instance) => sum + instance.state[good], 0);
     }
   }
 
@@ -36,35 +77,46 @@ export abstract class Territory {
     // we're not working on an object
     ({} as any) as Inventory,
     {
-      get: (_: Inventory, prop: keyof Inventory) => this.current(prop),
-      set: (_: Inventory, prop: keyof Inventory, value: number): boolean => {
-        let diff = this.current(prop) - value;
-        if (diff === 0) {
+      get: (_: Inventory, good: keyof Inventory) => this.current(good),
+      set: (_: Inventory, good: keyof Inventory, value: number): boolean => {
+        const current = this.current(good);
+        let difference = Math.abs(current - value);
+        if (difference === 0) {
           return true;
         }
-        if (isWarehouseGood(prop)) {
-          const warehouses = this.warehouses();
-          let nextWarehouse = warehouses.pop();
-          while (diff > 0 && nextWarehouse != null) {
-            const state = nextWarehouse.state;
-            if (state[prop] >= diff) {
-              state[prop] -= diff;
-              diff = 0;
-            } else {
-              diff -= state[prop];
-              state[prop] = 0;
-            }
-            nextWarehouse = warehouses.pop();
+        const isSubtract = current - value > 0;
+        const instances = (isWarehouseGood(good)
+          ? this.warehouses()
+          : this.map((coord) => useMapView().get(coord)).filter(
+              (
+                instance,
+              ): instance is StatefulTileInstance<any, typeof good, any> =>
+                instance != null && isProducing(instance, good),
+            )) as readonly StatefulTileInstance<any, keyof Inventory, any>[];
+        for (const instance of instances) {
+          const warehouseValue = instance.state[good];
+          if (
+            (isSubtract && warehouseValue <= 0) ||
+            (!isSubtract && warehouseValue >= instance.tile.consumes[good])
+          ) {
+            continue;
           }
-          //todo positive number constraint?
-          console.assert(
-            diff === 0,
-            `state would go negative! ${prop} ${value}`,
-          );
-          return diff === 0;
-        } else {
-          return true;
+          if (isSubtract) {
+            const fromWarehouse = Math.min(difference, warehouseValue);
+            instance.state[good] -= fromWarehouse;
+            difference -= fromWarehouse;
+          } else {
+            const room = instance.tile.consumes[good] - instance.state[good];
+            const toWarehouse = Math.min(difference, room);
+            instance.state[good] += toWarehouse;
+            difference -= toWarehouse;
+          }
+          if (difference === 0) {
+            // done
+            return true;
+          }
         }
+        return false;
       },
     },
   );

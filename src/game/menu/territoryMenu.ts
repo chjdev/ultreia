@@ -1,3 +1,4 @@
+import Phaser from "phaser";
 import { RexUIScene } from "./common";
 import { addMenu, Menu } from "./menu";
 import {
@@ -13,7 +14,6 @@ import {
 import { IconSprites } from "../sprites/IconSprites";
 import { TileInstance, TileInstanceFor } from "../../core/tiles/Tile";
 import { Warehouse } from "../../core/tiles/Warehouse";
-import Phaser from "phaser";
 import { Territory } from "../../core/Territory";
 import { AssertionError } from "assert";
 
