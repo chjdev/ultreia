@@ -15,7 +15,7 @@ Phaser.GameObjects.Container => {
 
       orientation: "y",
 
-      buttons: MenuKeys.slice(0, 2).map((key) =>
+      buttons: MenuKeys.slice(0, 3).map((key) =>
         createUIButton(scene, key, key.replace("Menu", "")),
       ),
 

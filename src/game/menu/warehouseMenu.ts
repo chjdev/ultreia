@@ -7,6 +7,8 @@ import { Dictionary } from "ts-essentials";
 import { TileInstance, TileInstanceFor } from "../../core/tiles/Tile";
 import { Warehouse } from "../../core/tiles/Warehouse";
 import Phaser from "phaser";
+import { Territory } from "../../core/Territory";
+import { AssertionError } from "assert";
 
 const tabs: Dictionary<readonly WarehouseGoods[]> = {
   Build: BuildingMaterials,
@@ -15,7 +17,7 @@ const tabs: Dictionary<readonly WarehouseGoods[]> = {
 };
 
 export interface WarehouseInfoMenu {
-  showInfoMenu(tileInstance: TileInstance): void;
+  showInfoMenu(tileInstance?: TileInstance): void;
 
   hideInfoMenu(): void;
 
@@ -38,8 +40,16 @@ WarehouseInfoMenu => {
     }
     menu = null;
   };
-  const showInfoMenu = (warehouseInstance: TileInstanceFor<Warehouse>) => {
+  const showInfoMenu = (warehouseInstance?: TileInstanceFor<Warehouse>) => {
     hideInfoMenu();
+    const territory =
+      warehouseInstance == null
+        ? Territory.global()
+        : Territory.from(warehouseInstance);
+    if (territory == null) {
+      throw new AssertionError({ message: "territory shouldn't be null here" });
+    }
+    const numWarehouses = territory.warehouses().length;
     menu = addMenu(
       scene,
       Object.fromEntries<Menu>(
@@ -47,7 +57,8 @@ WarehouseInfoMenu => {
           tab,
           tabs[tab].map((good) => ({
             icon: () => IconSprites.add(scene, 0, 0, good),
-            text: `${warehouseInstance.state[good]}/${warehouseInstance.tile.consumes[good]}`,
+            text: `${territory.state[good]}/${Warehouse.consumes[good] *
+              numWarehouses}`,
           })),
         ]),
       ),

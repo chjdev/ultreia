@@ -89,6 +89,12 @@ export class MenuScene extends Phaser.Scene {
         case "TurnMenu":
           useClock().tick();
           break;
+        case "PerformanceMenu":
+          this.buildMenu?.setVisible(false);
+          this.productionInfoMenu?.hideInfoMenu();
+          this.actionMenu?.setVisible(false);
+          this.warehouseMenu?.showInfoMenu();
+          break;
         default:
           this.buildMenu?.setVisible(true);
           this.actionMenu?.setVisible(false);
