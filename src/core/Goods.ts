@@ -168,7 +168,7 @@ export type Weapon = NoOverlap<
   keyof typeof _Weapon,
   ProductionGood | HarvestableGood | BuildingMaterial | NaturalGood
 >;
-export const Weaponry = enumKeys(_Weapon) as readonly Weapon[];
+export const Weapons = enumKeys(_Weapon) as readonly Weapon[];
 
 enum _ImmaterialGood {
   Culture,
@@ -218,7 +218,7 @@ export const Goods: readonly Exclude<Good, "Nothing">[] = [
   ...BuildingMaterials,
   ...HarvestableGoods,
   ...ProductionGoods,
-  ...Weaponry,
+  ...Weapons,
   ...ImmaterialGoods,
   ...Inhabitants,
 ];

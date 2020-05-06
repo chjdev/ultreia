@@ -162,8 +162,10 @@ const createProductionInfoView = (
   return infoContainer;
 };
 
-export interface CloseProductionInfoMenu {
-  (): void;
+export interface ProductionInfoMenu {
+  showInfoMenu(tileInstance: TileInstance): void;
+  hideInfoMenu(): void;
+  close(): void;
 }
 
 export const addProductionInfoMenu = (
@@ -173,7 +175,7 @@ export const addProductionInfoMenu = (
       clear: (destroy?: boolean) => void;
     },
   ) => void,
-): CloseProductionInfoMenu => {
+): ProductionInfoMenu => {
   // todo
   let infoContainer:
     | (Phaser.GameObjects.GameObject & {
@@ -182,7 +184,7 @@ export const addProductionInfoMenu = (
     | null
     | undefined;
   let tileInstance: TileInstance | null | undefined;
-  const closeInfoMenu = () => {
+  const hideInfoMenu = () => {
     if (infoContainer != null) {
       if (close != null) {
         close(infoContainer);
@@ -192,8 +194,8 @@ export const addProductionInfoMenu = (
       infoContainer = null;
     }
   };
-  const showInfoMenu = () => {
-    closeInfoMenu();
+  const showInfoMenu = (tileInstance: TileInstance) => {
+    hideInfoMenu();
     if (
       isTileInstance(tileInstance) &&
       !TileChecker.create("Water", "Grass", "Mountain")(tileInstance)
@@ -201,21 +203,21 @@ export const addProductionInfoMenu = (
       infoContainer = createProductionInfoView(scene, tileInstance);
     }
   };
-  const removeListeners = [
-    useInteractionView().listen<InteractionEvent>(({ coordinate, context }) => {
-      if (context !== "select") {
-        return;
-      }
-      tileInstance = useMapView().get(coordinate);
-      showInfoMenu();
-    }, InteractionEvent.select),
 
+  const removeListeners = [
     useClockView().listen(() => {
-      if (infoContainer) {
-        showInfoMenu();
+      if (infoContainer && tileInstance) {
+        showInfoMenu(tileInstance);
       }
     }, TickEvent.tock),
   ];
 
-  return () => removeListeners.forEach((removeListener) => removeListener());
+  return {
+    showInfoMenu,
+    hideInfoMenu,
+    close: () => {
+      hideInfoMenu();
+      removeListeners.forEach((removeListener) => removeListener());
+    },
+  };
 };

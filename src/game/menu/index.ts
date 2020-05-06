@@ -2,11 +2,19 @@ import * as Phaser from "phaser";
 import { addResourceMenu } from "./resourceMenu";
 import {
   addProductionInfoMenu,
-  CloseProductionInfoMenu,
+  ProductionInfoMenu,
 } from "./productionInfoMenu";
 import { addBuildMenu } from "./buildMenu";
 import { addActionMenu } from "./actionMenu";
-import { useClock, useInteraction } from "../../core/MatchContext";
+import {
+  useClock,
+  useInteraction,
+  useInteractionView,
+  useMapView,
+} from "../../core/MatchContext";
+import { InteractionEvent } from "../../core/Interaction";
+import { addWarehouseMenu, WarehouseInfoMenu } from "./warehouseMenu";
+import { isWarehouse } from "../../core/tiles/checkers";
 
 const sceneConfig: Phaser.Types.Scenes.SettingsConfig = {
   active: true,
@@ -35,24 +43,40 @@ export class MenuScene extends Phaser.Scene {
     });
   }
 
-  private closeProductionInfoMenu: CloseProductionInfoMenu | null = null;
+  private productionInfoMenu: ProductionInfoMenu | null = null;
   private resourceMenu: Phaser.GameObjects.Group | null = null;
   private buildMenu: Phaser.GameObjects.Container | null = null;
+  private warehouseMenu: WarehouseInfoMenu | null = null;
   private actionMenu: Phaser.GameObjects.Container | null = null;
-
-  private readonly flipVisible = () => {
-    const flip = this.actionMenu?.visible;
-    this.actionMenu?.setVisible(!flip);
-    this.buildMenu?.setVisible(!!flip);
-  };
 
   public create() {
     this.resourceMenu = addResourceMenu(this);
-    // todo no destructor possibilities?!
-    this.closeProductionInfoMenu = addProductionInfoMenu(this);
+    this.productionInfoMenu = addProductionInfoMenu(this);
+    this.warehouseMenu = addWarehouseMenu(this);
+    useInteractionView().listen<InteractionEvent>(({ coordinate, context }) => {
+      if (context !== "select") {
+        return;
+      }
+      const tileInstance = useMapView().get(coordinate);
+      if (tileInstance) {
+        this.buildMenu?.setVisible(false);
+        this.productionInfoMenu?.hideInfoMenu();
+
+        if (isWarehouse(tileInstance)) {
+          this.actionMenu?.setVisible(false);
+          this.warehouseMenu?.showInfoMenu(tileInstance);
+        } else {
+          this.actionMenu?.setVisible(true);
+          this.productionInfoMenu?.showInfoMenu(tileInstance);
+        }
+      }
+    }, InteractionEvent.select);
 
     this.buildMenu = addBuildMenu(this, (evt) => {
-      this.flipVisible();
+      this.buildMenu?.setVisible(false);
+      this.warehouseMenu?.hideInfoMenu();
+      this.actionMenu?.setVisible(true);
+      this.productionInfoMenu?.hideInfoMenu();
       if (evt === "Road") {
         useInteraction().roadContext();
       } else {
@@ -66,14 +90,20 @@ export class MenuScene extends Phaser.Scene {
           useClock().tick();
           break;
         default:
-          this.flipVisible();
+          this.buildMenu?.setVisible(true);
+          this.actionMenu?.setVisible(false);
+          this.warehouseMenu?.hideInfoMenu();
+          this.productionInfoMenu?.hideInfoMenu();
       }
     });
 
     this.input.on("pointerdown", (_: unknown, elements: readonly unknown[]) => {
       if (elements.length === 0) {
         // clicked outside
-        this.buildMenu?.visible && this.flipVisible();
+        this.buildMenu?.setVisible(false);
+        this.warehouseMenu?.hideInfoMenu();
+        this.actionMenu?.setVisible(true);
+        this.productionInfoMenu?.hideInfoMenu();
       }
     });
   }

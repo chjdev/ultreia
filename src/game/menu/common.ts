@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { IconSpriteKeys, IconSprites } from "../sprites/IconSprites";
+import { MarkOptional } from "ts-essentials";
 
 export type RexUIScene = Phaser.Scene & { readonly rexUI: any };
 
@@ -10,9 +11,9 @@ export const COLOR_DARK = 0x999999;
 export const createTabButton = (
   scene: RexUIScene,
   text: string,
-  width: number = 50,
-) =>
-  scene.rexUI.add.label({
+  { width = 50, data }: Partial<{ width: number; data: any }>,
+) => {
+  const button = scene.rexUI.add.label({
     width,
     height: 40,
     align: "center",
@@ -33,9 +34,19 @@ export const createTabButton = (
       fontSize: "18pt",
     }),
     space: {
-      left: 10,
+      left: 12,
+      right: 10,
     },
   });
+  if (data != null) {
+    if (typeof data === "object") {
+      Object.keys(data).forEach((key) => button.setData(key, data[key]));
+    } else {
+      button.setData("data", data);
+    }
+  }
+  return button;
+};
 
 export const createUIButton = (
   scene: RexUIScene,
