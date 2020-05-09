@@ -19,6 +19,7 @@ import { Distillery } from "./Distillery";
 import { Mountain } from "./Mountain";
 import { Fisher } from "./Fisher";
 import { FishSchool } from "./FishSchool";
+import { Quarry } from "./Quarry";
 import {
   ConstructableTile,
   isConstructableTile,
@@ -49,6 +50,7 @@ export const ConstructableTiles = {
   Inn,
   Distillery,
   Fisher,
+  Quarry,
 };
 /**
  * `ConstructableTiles` is used as the canonical mapping of string (`ConstructableTileKey`) to `Tile`.
