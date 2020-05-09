@@ -30,6 +30,47 @@ export const autoTick = <T extends TileKey, C extends Good, P extends Good>(
   instance: StatefulTileInstance<T, C, P>,
   map: MapView = useMapView(),
 ) => {
+  // produce as much goods as possible with the state (after consumption)
+  if (!Inventory.isNothing(instance.tile.produces)) {
+    const instanceState = instance.state as Inventory<C | P>;
+    while (
+      Inventory.reduce(
+        (stillProducing, value, good: P) => {
+          if (instanceState[good] < value) {
+            const formula = instance.tile.formula[good];
+            const formulas = formula instanceof Array ? formula : [formula];
+            return formulas.reduce((stillProducing, formula) => {
+              if (
+                Inventory.isNothing(formula) ||
+                Inventory.every(
+                  (value, good: C) => instanceState[good] >= value,
+                  formula,
+                )
+              ) {
+                if (!Inventory.isNothing(formula)) {
+                  Inventory.forEach((value, good: C) => {
+                    instanceState[good] -= value;
+                  }, formula);
+                }
+                instanceState[good] += Number(
+                  (
+                    instance.tile.baseProductivity(instance.coordinate) *
+                    instance.tile.productivity(instance)
+                  ).toPrecision(2),
+                );
+                return true;
+              }
+              return stillProducing || false;
+            }, stillProducing);
+          }
+          return stillProducing || false;
+        },
+        false,
+        instance.tile.produces,
+      )
+    );
+  }
+
   // assemble all reachable, i.e. within its influence and connected, tiles
   const reachableTiles: readonly TileInstance[] = instance.tile
     .influence(instance.coordinate)
@@ -94,47 +135,6 @@ export const autoTick = <T extends TileKey, C extends Good, P extends Good>(
         reachableTiles.forEach((from: TileInstance) => consumeAmountGood(from));
       }
     }, unfilledGoods);
-  }
-
-  // produce as much goods as possible with the state (after consumption)
-  if (!Inventory.isNothing(instance.tile.produces)) {
-    const instanceState = instance.state as Inventory<C | P>;
-    while (
-      Inventory.reduce(
-        (stillProducing, value, good: P) => {
-          if (instanceState[good] < value) {
-            const formula = instance.tile.formula[good];
-            const formulas = formula instanceof Array ? formula : [formula];
-            return formulas.reduce((stillProducing, formula) => {
-              if (
-                Inventory.isNothing(formula) ||
-                Inventory.every(
-                  (value, good: C) => instanceState[good] >= value,
-                  formula,
-                )
-              ) {
-                if (!Inventory.isNothing(formula)) {
-                  Inventory.forEach((value, good: C) => {
-                    instanceState[good] -= value;
-                  }, formula);
-                }
-                instanceState[good] += Number(
-                  (
-                    instance.tile.baseProductivity(instance.coordinate) *
-                    instance.tile.productivity(instance)
-                  ).toPrecision(2),
-                );
-                return true;
-              }
-              return stillProducing || false;
-            }, stillProducing);
-          }
-          return stillProducing || false;
-        },
-        false,
-        instance.tile.produces,
-      )
-    );
   }
 };
 
