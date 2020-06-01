@@ -11,9 +11,14 @@ export type Chapel = StandardTile<
 >;
 export const Chapel: Chapel = {
   tag: "Chapel",
-  consumes: { Money: 10 },
+  consumes: {
+    Money: 10,
+  },
   produces: {
-    Faith: 1,
+    Faith: 200,
+  },
+  prerequisite: {
+    Pioneer: 50,
   },
   costs: {
     Money: 100,

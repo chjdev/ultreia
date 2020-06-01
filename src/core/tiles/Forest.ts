@@ -15,7 +15,7 @@ export const Forest: Forest = {
   consumes: Inventory.NOTHING,
   produces: {
     Tree: 10,
-    Game: 5,
+    Game: 3,
   },
   costs: {
     Money: 10,

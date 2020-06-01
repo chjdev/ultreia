@@ -13,7 +13,7 @@ export type PotatoFarm = StandardTile<
 export const PotatoFarm: PotatoFarm = {
   tag: "PotatoFarm",
   consumes: {
-    PotatoPlant: 20,
+    PotatoPlant: 12,
     Money: 20,
   },
   produces: {

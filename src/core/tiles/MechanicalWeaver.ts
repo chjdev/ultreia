@@ -12,12 +12,12 @@ export type MechanicalWeaver = StandardTile<
 export const MechanicalWeaver: MechanicalWeaver = {
   tag: "MechanicalWeaver",
   consumes: {
-    Wool: 120,
-    Cotton: 240,
+    Wool: 1000,
+    Cotton: 1500,
     Money: 40,
   },
   produces: {
-    Cloth: 60,
+    Cloth: 500,
   },
   costs: {
     Money: 1500,
@@ -38,10 +38,10 @@ export const MechanicalWeaver: MechanicalWeaver = {
         Wool: 2,
         Money: 6,
       },
-      {
-        Cotton: 5,
-        Money: 2,
-      },
+      // {
+      //   Cotton: 5,
+      //   Money: 2,
+      // },
     ],
   },
 

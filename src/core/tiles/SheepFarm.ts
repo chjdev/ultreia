@@ -13,8 +13,8 @@ export type SheepFarm = StandardTile<
 export const SheepFarm: SheepFarm = {
   tag: "SheepFarm",
   consumes: {
-    Sheep: 20,
-    Money: 20,
+    Sheep: 12,
+    Money: 200,
   },
   produces: {
     Wool: 10,

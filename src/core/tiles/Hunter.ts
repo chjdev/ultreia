@@ -14,8 +14,8 @@ export type Hunter = StandardTile<
 export const Hunter: Hunter = {
   tag: "Hunter",
   consumes: {
-    Game: 20,
-    Money: 20,
+    Game: 12,
+    Money: 100,
   },
   produces: {
     Meat: 10,

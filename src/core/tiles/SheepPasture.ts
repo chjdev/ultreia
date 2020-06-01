@@ -15,7 +15,7 @@ export const SheepPasture: SheepPasture = {
   tag: "SheepPasture",
   consumes: Inventory.NOTHING,
   produces: {
-    Sheep: 10,
+    Sheep: 4,
   },
   costs: {
     Money: 50,

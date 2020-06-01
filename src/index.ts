@@ -1,1 +1,4 @@
-export { game } from "./game";
+// export { game } from "./game";
+import { run } from "./experiments/SceneGraph";
+
+run();

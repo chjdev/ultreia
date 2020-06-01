@@ -15,7 +15,7 @@ export const PotatoField: PotatoField = {
   tag: "PotatoField",
   consumes: Inventory.NOTHING,
   produces: {
-    PotatoPlant: 20,
+    PotatoPlant: 3,
   },
   costs: {
     Money: 50,

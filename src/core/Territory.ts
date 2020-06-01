@@ -11,7 +11,6 @@ import { RemoveListener } from "./Observable";
 import { useMapView } from "./MatchContext";
 import { isWarehouse } from "./tiles/checkers";
 import { Inventory } from "./Goods";
-import { AssertionError } from "assert";
 
 type WarehouseInstanceView = Readonly<TileInstanceFor<Warehouse>>;
 

@@ -14,7 +14,7 @@ export const FishSchool: FishSchool = {
     WildFish: 0,
   },
   formula: {
-    WildFish: {},
+    WildFish: Inventory.NOTHING,
   },
 
   productivity: Productivity.simple,

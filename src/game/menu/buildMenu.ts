@@ -10,7 +10,7 @@ const Civics: MenuItems = [
   "Road",
   "Warehouse",
   "Chapel",
-  "FoodMarket",
+  "Market",
   "Inn",
   "Pioneer",
 ];

@@ -11,7 +11,7 @@ import { Weaver } from "./Weaver";
 import { MechanicalWeaver } from "./MechanicalWeaver";
 import { PotatoField } from "./PotatoField";
 import { PotatoFarm } from "./PotatoFarm";
-import { FoodMarket } from "./FoodMarket";
+import { Market } from "./Market";
 import { Hunter } from "./Hunter";
 import { Tanner } from "./Tanner";
 import { Inn } from "./Inn";
@@ -44,7 +44,7 @@ export const ConstructableTiles = {
   MechanicalWeaver,
   PotatoField,
   PotatoFarm,
-  FoodMarket,
+  Market,
   Hunter,
   Tanner,
   Inn,

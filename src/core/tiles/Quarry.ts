@@ -11,6 +11,9 @@ export const Quarry: Quarry = {
   consumes: {
     Money: 10,
   },
+  prerequisite: {
+    Pioneer: 100,
+  },
   produces: {
     Stone: 10,
   },

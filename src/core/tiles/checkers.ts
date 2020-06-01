@@ -10,7 +10,7 @@ export const isCivic = TileChecker.create(
   "Pioneer",
   "Chapel",
   "Inn",
-  "FoodMarket",
+  "Market",
 );
 
 export const isRoadPoint = TileChecker.not(

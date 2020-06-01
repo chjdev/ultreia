@@ -3,14 +3,14 @@ import { Coordinate } from "../Coordinate";
 import { StandardTickingInstance } from "./TickingInstance";
 import { isBuildable } from "./utils";
 
-export type FoodMarket = StandardTile<
-  "FoodMarket",
+export type Market = StandardTile<
+  "Market",
   "Potato" | "Fish" | "Bread" | "Meat" | "Money",
   "Food",
   "Money" | "Wood" | "Tool"
 >;
-export const FoodMarket: FoodMarket = {
-  tag: "FoodMarket",
+export const Market: Market = {
+  tag: "Market",
   consumes: {
     Potato: 50,
     Fish: 50,
@@ -44,10 +44,10 @@ export const FoodMarket: FoodMarket = {
         Fish: 2,
         Money: 2,
       },
-      {
-        Bread: 3,
-        Money: 2,
-      },
+      // {
+      //   Bread: 3,
+      //   Money: 2,
+      // },
       {
         Meat: 1,
         Money: 2,
@@ -65,4 +65,4 @@ export const FoodMarket: FoodMarket = {
   create: (coord) => new FoodMarketInstance(coord),
 };
 
-class FoodMarketInstance extends StandardTickingInstance(FoodMarket) {}
+class FoodMarketInstance extends StandardTickingInstance(Market) {}

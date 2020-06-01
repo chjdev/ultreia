@@ -37,10 +37,10 @@ export const Inn: Inn = {
         Spirit: 1,
         Money: 2,
       },
-      {
-        Beer: 1,
-        Money: 2,
-      },
+      // {
+      //   Beer: 1,
+      //   Money: 2,
+      // },
     ],
   },
 

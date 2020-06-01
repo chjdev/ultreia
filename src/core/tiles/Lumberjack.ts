@@ -12,9 +12,9 @@ export type Lumberjack = StandardTile<
 >;
 export const Lumberjack: Lumberjack = {
   tag: "Lumberjack",
-  consumes: { Tree: 20, Money: 20 },
+  consumes: { Tree: 30, Money: 20 },
   produces: {
-    Wood: 10,
+    Wood: 20,
   },
   costs: {
     Money: 100,

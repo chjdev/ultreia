@@ -70,6 +70,8 @@ export interface ConstructableTile<
   /** Configures the cost of this Tile */
   readonly costs: InventoryView<Costs>;
 
+  readonly prerequisite?: Partial<InventoryView>;
+
   /**
    * Check whether this tile is allowed at this coordinate
    *
@@ -340,15 +342,15 @@ export const isStatefulTile = (
  * @throws TypeError
  * @see StatefulTile
  */
-export const assertStatefulTile = (
+export function assertStatefulTile(
   value: any,
-): asserts value is StatefulTile<any, any, any> => {
+): asserts value is StatefulTile<any, any, any> {
   if (!isStatefulTile(value)) {
     throw new TypeError(
       `provided value (${JSON.stringify(value)}) is not a stateful tile!`,
     );
   }
-};
+}
 
 /**
  * Standard tiles are constructable, stateful tiles. These are usually the
@@ -385,15 +387,15 @@ export const isStandardTile = (
  * @throws TypeError
  * @see StandardTile
  */
-export const assertStandardTile = (
+export function assertStandardTile(
   value: any,
-): asserts value is StandardTile<any, any, any, any> => {
+): asserts value is StandardTile<any, any, any, any> {
   if (!isStandardTile(value)) {
     throw new TypeError(
       `provided value (${JSON.stringify(value)}) is not a standard tile!`,
     );
   }
-};
+}
 
 export interface TileInstance<T extends TileKey = any> {
   readonly tile: Readonly<Tile<T>>;

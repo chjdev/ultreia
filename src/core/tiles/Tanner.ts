@@ -13,11 +13,11 @@ export type Tanner = StandardTile<
 export const Tanner: Tanner = {
   tag: "Tanner",
   consumes: {
-    RawHide: 20,
-    Money: 20,
+    RawHide: 10,
+    Money: 200,
   },
   produces: {
-    Leather: 5,
+    Leather: 200,
   },
   costs: {
     Wood: 10,
@@ -32,7 +32,7 @@ export const Tanner: Tanner = {
   formula: {
     Leather: {
       RawHide: 2,
-      Money: 2,
+      Money: 5,
     },
   },
 

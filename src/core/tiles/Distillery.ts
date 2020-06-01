@@ -12,7 +12,7 @@ export type Distillery = StandardTile<
 export const Distillery: Distillery = {
   tag: "Distillery",
   consumes: {
-    Potato: 50,
+    Potato: 20,
     Wheat: 50,
     SugarCane: 50,
     Money: 50,
@@ -39,14 +39,14 @@ export const Distillery: Distillery = {
         Potato: 5,
         Money: 5,
       },
-      {
-        Wheat: 10,
-        Money: 5,
-      },
-      {
-        SugarCane: 3,
-        Money: 5,
-      },
+      // {
+      //   Wheat: 10,
+      //   Money: 5,
+      // },
+      // {
+      //   SugarCane: 3,
+      //   Money: 5,
+      // },
     ],
   },
 

@@ -238,7 +238,15 @@ export type InventoryView<
 export namespace Inventory {
   export const goods = <G extends Good, T = number>(
     inventory: Partial<InventoryView<G, T>>,
-  ): G[] => Object.keys(inventory) as G[];
+    excludeNothing: boolean = false,
+  ): G[] => {
+    const goods = Object.keys(inventory) as G[];
+    if (excludeNothing) {
+      return goods.filter((good) => good !== "Nothing");
+    } else {
+      return goods;
+    }
+  };
 
   export function forEach<
     G extends Good,
@@ -246,8 +254,12 @@ export namespace Inventory {
     _I extends InventoryView<G, T> | Partial<InventoryView<G, T>> =
       | InventoryView<G, T>
       | Partial<InventoryView<G, T>>
-  >(fun: (value: T, good: G, inventory: _I) => void, inventory: _I): void {
-    goods(inventory).forEach(
+  >(
+    fun: (value: T, good: G, inventory: _I) => void,
+    inventory: _I,
+    excludeNothing: boolean = false,
+  ): void {
+    goods(inventory, excludeNothing).forEach(
       (good: G) =>
         inventory.hasOwnProperty(good) &&
         fun(inventory[good] as T, good, inventory),
@@ -326,6 +338,32 @@ export namespace Inventory {
           good in inventory2 ? inventory2[good as G2] : inventory1[good as G1],
         ]),
     ) as Partial<Inventory<G1 | G2, T1 | T2>>) as Inventory<G1 | G2, T1 | T2>;
+
+  export const plus = <G1 extends Good, G2 extends Good>(
+    inventory1: InventoryView<G1, number>,
+    inventory2: InventoryView<G2, number>,
+  ): Inventory<G1 | G2, number> =>
+    (Object.fromEntries<number>(
+      (goods(inventory1) as (G1 | G2)[])
+        .concat(goods(inventory2))
+        .map((good) => [
+          good,
+          (inventory1[good as G1] ?? 0) + (inventory2[good as G2] ?? 0),
+        ]),
+    ) as Partial<Inventory<G1 | G2, number>>) as Inventory<G1 | G2, number>;
+
+  export const minus = <G1 extends Good, G2 extends Good>(
+    inventory1: InventoryView<G1, number>,
+    inventory2: InventoryView<G2, number>,
+  ): Inventory<G1 | G2, number> =>
+    (Object.fromEntries<number>(
+      (goods(inventory1) as (G1 | G2)[])
+        .concat(goods(inventory2))
+        .map((good) => [
+          good,
+          (inventory1[good as G1] ?? 0) - (inventory2[good as G2] ?? 0),
+        ]),
+    ) as Partial<Inventory<G1 | G2, number>>) as Inventory<G1 | G2, number>;
 
   export const difference = <
     G1 extends Good,

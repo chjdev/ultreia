@@ -12,11 +12,11 @@ export type Weaver = StandardTile<
 export const Weaver: Weaver = {
   tag: "Weaver",
   consumes: {
-    Wool: 60,
-    Money: 20,
+    Wool: 20,
+    Money: 200,
   },
   produces: {
-    Cloth: 30,
+    Cloth: 10,
   },
   costs: {
     Money: 900,
