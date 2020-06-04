@@ -1,5 +1,7 @@
-import { clear, Primitives, retina } from "./RenderUtils";
-import render = Primitives.Rectangle.render;
+import { Primitive } from "./render/primitive/Primitive";
+import { Rectangle as RectanglePrimitive } from "./render/primitive/Rectangle";
+import { retina } from "./render/utils";
+import { Textures } from "./render/Textures";
 
 interface InternalGraphNode {
   graph: SceneGraph;
@@ -27,16 +29,17 @@ type AsPartialArgs<T extends GraphNode | InternalGraphNode> = Partial<
   AsArgs<T>
 >;
 
-interface VisualNode extends GraphNode, Primitives.Primitive {}
+interface VisualNode extends GraphNode, Primitive {}
 
 interface Scene extends VisualNode {
   context: WebGL2RenderingContext;
+  textureMap: Record<string, [number, number]>;
 }
 
 const isScene = (value: any): value is Scene =>
   "context" in value && isGraphNode(value);
 
-interface Rectangle extends VisualNode, Primitives.Rectangle {}
+interface Rectangle extends VisualNode, RectanglePrimitive {}
 
 const isRectangle = (value: any): value is Rectangle =>
   typeof value.x === "number" &&
@@ -112,6 +115,10 @@ class SceneGraph {
     return this.internalRoot;
   }
 
+  public at(x: number, y: number): GraphNode | undefined {
+    return undefined;
+  }
+
   private update() {
     const renderPlan = new Map<
       string,
@@ -152,16 +159,10 @@ class SceneGraph {
             WebGL2RenderingContext,
           ] => [child, zIndex + 1, current.context]),
         );
-        continue;
-      }
-
-      if (context == null) {
+      } else if (context == null) {
         //nothing to render
         console.debug("orphan node", current, zIndex);
-        continue;
-      }
-
-      if (isRectangle(current) && current.visible) {
+      } else if (isRectangle(current) && current.visible) {
         const contextId = (context.canvas as HTMLCanvasElement).id;
         const subPlan = renderPlan.get(contextId);
         if (subPlan == null) {
@@ -181,19 +182,15 @@ class SceneGraph {
             WebGL2RenderingContext,
           ] => [child, zIndex + 1, context]),
         );
-        continue;
       }
+      (current as InternalGraphNode).pending = false;
     }
 
     for (const { scene, pending, elements } of renderPlan.values()) {
       if (!pending) {
         continue;
       }
-      clear(scene.context);
-      render(scene.context, ...elements);
-      (([scene, ...elements] as unknown) as InternalGraphNode[]).forEach(
-        (element) => (element.pending = false),
-      );
+      RectanglePrimitive.render(scene.context, scene.textureMap, ...elements);
     }
 
     this.internalRoot.pending = false;
@@ -244,7 +241,7 @@ class SceneGraph {
           //   return false;
           // }
           (target as T)[prop] = value;
-          if (prop !== "pending" && (target as T)[prop] !== false) {
+          if (prop !== "pending" || value === true) {
             target.pending = true;
             target.graph.requestUpdate();
           }
@@ -276,22 +273,23 @@ class SceneGraph {
   }
 
   public visualNode<T extends VisualNode>(
-    { backgroundColor, visible = true }: AsPartialArgs<T> = {},
+    { backgroundColor, texture, visible = true }: AsPartialArgs<T> = {},
     ...children: readonly GraphNode[]
   ): T {
     return this.node(
       {
         backgroundColor,
+        texture,
         visible,
       },
       ...children,
     ) as T;
   }
 
-  public scene<T extends Scene>(
+  public async scene<T extends Scene>(
     args: AsPartialArgs<T> = {},
     ...children: readonly GraphNode[]
-  ): T {
+  ): Promise<T> {
     const visual = this.visualNode(args, ...children) as T;
     const canvas = document.createElement("canvas");
     do {
@@ -310,7 +308,8 @@ class SceneGraph {
     }
     context.blendFunc(context.ONE, context.ONE_MINUS_SRC_ALPHA);
     context.enable(context.BLEND);
-    Object.assign(visual, { context });
+    const textureMap = await Textures.loadTextures(context);
+    Object.assign(visual, { context, textureMap });
     return visual;
   }
 
@@ -331,17 +330,18 @@ class SceneGraph {
   }
 }
 
-export const run = () => {
+export const run = async () => {
   const g = new SceneGraph();
-  const scene = g.scene();
+  const scene = await g.scene();
   const rect = g.rectangle(
     {
-      width: 600,
-      height: 400,
+      width: 256,
+      height: 384,
       backgroundColor: { r: 1.0 },
       borderRadius: { tr: 0.25, tl: 0.25, bl: 0.25, br: -0.5 },
+      texture: "Pioneer",
     },
-    g.scene(
+    await g.scene(
       {},
       g.rectangle(
         {
@@ -377,12 +377,6 @@ export const run = () => {
       const color = rect.backgroundColor ?? {};
       const { b = 0 } = color;
       rect.x = ((new Date().getTime() - start) / 500) * 5;
-      rect.width = 500 + Math.random() * 100;
-      rect.borderRadius = {
-        ...(rect.borderRadius ?? {}),
-        br: Math.random(),
-        tl: Math.random(),
-      };
       rect.backgroundColor = { ...color, b: b + 0.01 };
       if (b < 1) {
         window.requestAnimationFrame(fade);
@@ -391,4 +385,11 @@ export const run = () => {
       }
     });
   fade();
+  window.onclick = ({ clientX, clientY }: MouseEvent) => {
+    const node = g.at(clientX, clientY);
+    if (node == null) {
+      return;
+    }
+    console.log(node);
+  };
 };

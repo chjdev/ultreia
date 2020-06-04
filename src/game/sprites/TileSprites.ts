@@ -3,7 +3,12 @@ import { Tile, TileInstance } from "../../core/tiles/Tile";
 import * as Phaser from "phaser";
 import { deepReadonly } from "../../utils";
 import { TileAxis } from "../../core/TileDimensions";
-import { asSpriteImage, SpriteFactory, SpriteImageFor } from "./SpriteFactory";
+import {
+  asSpriteImage,
+  simpleTiler,
+  SpriteFactory,
+  SpriteImageFor,
+} from "./SpriteFactory";
 import { Coordinate } from "../../core/Coordinate";
 import { Road } from "../../core/Road";
 
@@ -191,3 +196,9 @@ export const TileSprites: TileSprites = {
   moveTo: (frame: TileSprite, x: number, y: number): TileSprite =>
     frame.setX(x - TileSprites.margin.left).setY(y - TileSprites.margin.top),
 };
+
+export const tiler = simpleTiler(
+  frames,
+  TileSprites.frameWidth,
+  TileSprites.frameHeight,
+);

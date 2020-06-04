@@ -88,3 +88,61 @@ export type SpriteImageFor<
 export const asSpriteImage = <
   SI extends Opaque<string, Phaser.GameObjects.Image>
 >() => (value: Phaser.GameObjects.Image): SI => value as SI;
+
+export interface TilerTile {
+  key: string;
+  url: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}
+export interface Tiler {
+  (maxHeight: number): {
+    tiles: TilerTile[][];
+    frameWidth: number;
+    frameHeight: number;
+  };
+}
+export const simpleTiler = (
+  frames: Readonly<Record<string, string | readonly string[]>>,
+  frameWidth: number,
+  frameHeight: number,
+): Tiler => (maxHeight) => {
+  const frameKeys = Object.keys(frames);
+  // const numFrames = frameKeys.reduce(
+  //   (acc, key) => acc + [frames[key]].flat().length,
+  //   0,
+  // );
+  const numFrames = frameKeys.length;
+  const rows = Math.min(frameKeys.length, Math.floor(maxHeight / frameHeight));
+  // todo wastes space, should be better packed! but whatever for now
+  const columns = Math.ceil(numFrames / rows);
+  const tiles: TilerTile[][] = [...Array(rows)].map(() => Array(columns));
+  for (let row = 0; row < rows; row++) {
+    for (
+      let column = 0;
+      column < columns && row * rows + column < frameKeys.length;
+      column++
+    ) {
+      const idx = row * rows + column;
+      const frameKey = frameKeys[idx];
+      const variants: string[] = [frames[frameKey]].flat();
+      // variants.forEach((variant, idx) => {
+      //   tiles[row][column] = {
+      //     key: frameKey + (idx > 0 ? idx.toString() : ""),
+      //     url: variant,
+      //   };
+      // });
+      tiles[row][column] = {
+        key: frameKey,
+        url: variants[0],
+      };
+    }
+  }
+  return {
+    frameWidth,
+    frameHeight,
+    tiles,
+  };
+};
