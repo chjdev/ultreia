@@ -20,9 +20,11 @@ export namespace Textures {
     });
   };
 
+  export type TextureMap = Record<string, [number, number]>;
+
   export const loadTextures = async (
     context: WebGL2RenderingContext,
-  ): Promise<Record<string, [number, number]>> => {
+  ): Promise<[WebGLTexture, TextureMap]> => {
     const height = 2048;
     const { frameWidth, frameHeight, tiles } = tiler(height);
     console.assert(
@@ -106,6 +108,6 @@ export namespace Textures {
       context.TEXTURE_WRAP_T,
       context.CLAMP_TO_EDGE,
     );
-    return textureMap;
+    return [texture, textureMap];
   };
 }

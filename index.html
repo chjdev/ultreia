@@ -22,6 +22,12 @@
         overflow: hidden !important;
         width: 100%;
         height: 100%;
+        /* IE, only works on <img> tags */
+        -ms-interpolation-mode: nearest-neighbor;
+        /* Firefox */
+        image-rendering: crisp-edges;
+        /* Chromium + Safari */
+        image-rendering: pixelated;
       }
       canvas {
         position: absolute;

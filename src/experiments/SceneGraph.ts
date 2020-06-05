@@ -2,17 +2,20 @@ import { Primitive } from "./render/primitive/Primitive";
 import { Rectangle as RectanglePrimitive } from "./render/primitive/Rectangle";
 import { retina } from "./render/utils";
 import { Textures } from "./render/Textures";
+import { SceneData } from "./SceneData";
 
 interface InternalGraphNode {
+  id: number;
   graph: SceneGraph;
   pending: boolean;
   children: InternalGraphNode[];
 }
 
 interface GraphNode
-  extends Omit<InternalGraphNode, "pending" | "children" | "graph"> {
+  extends Omit<InternalGraphNode, "id" | "pending" | "children" | "graph"> {
   readonly graph: SceneGraph;
   readonly pending: boolean;
+  readonly id: number;
   children: readonly GraphNode[];
 }
 
@@ -33,7 +36,7 @@ interface VisualNode extends GraphNode, Primitive {}
 
 interface Scene extends VisualNode {
   context: WebGL2RenderingContext;
-  textureMap: Record<string, [number, number]>;
+  data: SceneData;
 }
 
 const isScene = (value: any): value is Scene =>
@@ -75,19 +78,19 @@ const assertGraphParentage = <T extends GraphNode>(
   }
 };
 
-const addChildren = <T extends GraphNode>(
-  node: T,
+export const addChildren = (
+  node: GraphNode,
   ...children: readonly GraphNode[]
-): T => {
+): GraphNode => {
   assertGraphParentage(node, ...children);
   node.children = [...node.children, ...children];
   return node;
 };
 
-const removeChildren = <T extends GraphNode>(
-  node: T,
+export const removeChildren = (
+  node: GraphNode,
   ...children: readonly GraphNode[]
-): T => {
+): GraphNode => {
   assertGraphParentage(node, ...children);
   node.children = node.children.filter((child) => !children.includes(child));
   return node;
@@ -97,103 +100,49 @@ class SceneGraph {
   private sceneIds = new Set<string>();
   private updateRequested: number = 0;
   private updateDebounced: boolean = false;
-  private readonly internalRoot: InternalGraphNode;
+  // todo
+  private internalRoot!: Scene;
 
-  public constructor() {
-    this.internalRoot = this.internalNode({});
-  }
-
-  public addChildren(...children: readonly GraphNode[]): GraphNode {
-    return addChildren(this.root, ...children);
-  }
-
-  public removeChildren(...children: readonly GraphNode[]): GraphNode {
-    return removeChildren(this.root, ...children);
-  }
-
-  public get root(): GraphNode {
+  public get root(): Scene {
     return this.internalRoot;
   }
 
-  public at(x: number, y: number): GraphNode | undefined {
-    return undefined;
+  public async init() {
+    this.internalRoot = await this.scene();
+  }
+
+  private walkTo(id: number): GraphNode | undefined {
+    if (id === -1) {
+      return this.root;
+    }
+    const elements = this.root.children.slice(0);
+    let current = null;
+    let counter = 0;
+    while ((current = elements.shift()) != null) {
+      if (id === counter) {
+        return current;
+      }
+      counter++;
+      elements.unshift(...current.children);
+    }
+  }
+
+  public at(
+    x: number,
+    y: number,
+    fun: (node: GraphNode | undefined) => void,
+  ): void {
+    RectanglePrimitive.render(this.root.context, this.root.data, {
+      x,
+      y,
+      onClick: (id: number) => {
+        fun(this.walkTo(id));
+      },
+    });
   }
 
   private update() {
-    const renderPlan = new Map<
-      string,
-      {
-        scene: Scene;
-        pending: boolean;
-        elements: Rectangle[];
-      }
-    >();
-    const elements: [
-      InternalGraphNode,
-      number,
-      WebGL2RenderingContext | null,
-    ][] = this.internalRoot.children.map((child) => [child, 0, null]);
-    let nextElement;
-    while ((nextElement = elements.pop()) != null) {
-      const [current, zIndex, context] = nextElement;
-      if (isScene(current)) {
-        const sceneCanvas = current.context.canvas as HTMLCanvasElement;
-        renderPlan.set(sceneCanvas.id, {
-          scene: current,
-          pending: current.pending,
-          elements: [],
-        });
-        if (sceneCanvas.style.zIndex !== zIndex.toString()) {
-          sceneCanvas.style.zIndex = zIndex.toString();
-        }
-        // todo
-        // sceneCanvas.style.background = current.backgroundColor;
-        const visibility = current.visible ? "inherit" : "hidden";
-        if (sceneCanvas.style.visibility !== visibility) {
-          sceneCanvas.style.visibility = visibility;
-        }
-        elements.push(
-          ...current.children.map((child): [
-            InternalGraphNode,
-            number,
-            WebGL2RenderingContext,
-          ] => [child, zIndex + 1, current.context]),
-        );
-      } else if (context == null) {
-        //nothing to render
-        console.debug("orphan node", current, zIndex);
-      } else if (isRectangle(current) && current.visible) {
-        const contextId = (context.canvas as HTMLCanvasElement).id;
-        const subPlan = renderPlan.get(contextId);
-        if (subPlan == null) {
-          console.assert(
-            subPlan != null,
-            "this should not happen, elements array is set in scene",
-          );
-          continue;
-        }
-        // todo more fine grained that checks overlaps?!
-        subPlan.pending = subPlan.pending || current.pending;
-        subPlan.elements.push(current);
-        elements.push(
-          ...current.children.map((child): [
-            InternalGraphNode,
-            number,
-            WebGL2RenderingContext,
-          ] => [child, zIndex + 1, context]),
-        );
-      }
-      (current as InternalGraphNode).pending = false;
-    }
-
-    for (const { scene, pending, elements } of renderPlan.values()) {
-      if (!pending) {
-        continue;
-      }
-      RectanglePrimitive.render(scene.context, scene.textureMap, ...elements);
-    }
-
-    this.internalRoot.pending = false;
+    RectanglePrimitive.render(this.root.context, this.root.data);
   }
 
   public requestUpdate() {
@@ -201,7 +150,10 @@ class SceneGraph {
     if (!this.updateDebounced) {
       this.updateDebounced = true;
       const numUpdated = this.updateRequested;
-      window.requestAnimationFrame(() => {
+      //todo
+      // window.requestAnimationFrame(() => {
+      // seems smoother
+      setTimeout(() => {
         this.update();
         this.updateRequested -= numUpdated;
         this.updateDebounced = false;
@@ -209,8 +161,26 @@ class SceneGraph {
         if (this.updateRequested > 0) {
           this.requestUpdate();
         }
-      });
+      }, 32); // 32 ~ 30fps, 16 ~ 60fps
     }
+  }
+
+  private reindex() {
+    // todo only rectangles atm
+    const elements = this.root.children.slice(0);
+    const flat: GraphNode[] = [];
+    let current = null;
+    while ((current = elements.shift()) != null) {
+      (current as InternalGraphNode).id = flat.length;
+      flat.push(current);
+      elements.unshift(...current.children);
+    }
+
+    flat.forEach((element, idx) => {
+      this.root.data.setRectangle(idx, element as Rectangle);
+      (element as InternalGraphNode).pending = false;
+    });
+    this.requestUpdate();
   }
 
   private internalNode<
@@ -226,9 +196,10 @@ class SceneGraph {
     const internalNode = new Proxy<T & InternalGraphNode>(
       {
         ...target,
+        id: -1,
         graph: this,
         pending: true as boolean,
-        children: [] as InternalGraphNode[],
+        children: children as InternalGraphNode[],
       } as T & InternalGraphNode,
       {
         set: <P extends keyof T>(
@@ -236,14 +207,20 @@ class SceneGraph {
           prop: P,
           value: T[P],
         ): boolean => {
-          // if (!(prop in target)) {
-          //   console.error("Key not found in target: " + JSON.stringify(target));
-          //   return false;
-          // }
           (target as T)[prop] = value;
-          if (prop !== "pending" || value === true) {
+          if (prop !== "pending") {
             target.pending = true;
+          }
+
+          if (prop === "children") {
+            target.graph.reindex();
+          } else if (target.pending) {
+            // todo scene? only rectangles for now?
+            if (isRectangle(target) && target.id >= 0) {
+              target.graph.root.data.setRectangle(target.id, target);
+            }
             target.graph.requestUpdate();
+            target.pending = false;
           }
           return true;
         },
@@ -255,7 +232,6 @@ class SceneGraph {
         },
       },
     );
-    addChildren(internalNode, ...children);
     return internalNode;
   }
 
@@ -308,8 +284,11 @@ class SceneGraph {
     }
     context.blendFunc(context.ONE, context.ONE_MINUS_SRC_ALPHA);
     context.enable(context.BLEND);
-    const textureMap = await Textures.loadTextures(context);
-    Object.assign(visual, { context, textureMap });
+    const [texture, textureMap] = await Textures.loadTextures(context);
+    Object.assign(visual, {
+      context,
+      data: new SceneData(texture, textureMap),
+    });
     return visual;
   }
 
@@ -332,7 +311,7 @@ class SceneGraph {
 
 export const run = async () => {
   const g = new SceneGraph();
-  const scene = await g.scene();
+  await g.init();
   const rect = g.rectangle(
     {
       width: 256,
@@ -341,55 +320,62 @@ export const run = async () => {
       borderRadius: { tr: 0.25, tl: 0.25, bl: 0.25, br: -0.5 },
       texture: "Pioneer",
     },
-    await g.scene(
-      {},
-      g.rectangle(
-        {
-          x: 10,
-          y: 10,
-          width: 20,
-          height: 20,
-          backgroundColor: { g: 1.0 },
-        },
-        g.rectangle({
-          x: 12,
-          y: 12,
-          width: 20,
-          height: 20,
-          backgroundColor: { b: 1.0, a: 0.5 },
-          borderRadius: { tr: 1.0, tl: 1.0, bl: 1.0, br: 1.0 },
-        }),
-      ),
+    g.rectangle(
+      {
+        x: 10,
+        y: 10,
+        width: 50,
+        height: 50,
+        backgroundColor: { g: 1.0 },
+        texture: "Hunter",
+      },
+      g.rectangle({
+        x: 25,
+        y: 25,
+        width: 50,
+        height: 50,
+        backgroundColor: { b: 1.0, a: 0.5 },
+        borderRadius: { tr: 1.0, tl: 1.0, bl: 1.0, br: 1.0 },
+        texture: "Water",
+      }),
     ),
     g.rectangle({
       x: 50,
       y: 50,
-      width: 10,
-      height: 10,
-      backgroundColor: { g: 1.0 },
+      width: 30,
+      height: 30,
+      backgroundColor: { g: 0.75 },
+      borderRadius: { tr: 1.0 },
+      texture: "Tanner",
     }),
   );
-  addChildren(scene, rect);
-  g.addChildren(scene);
+  addChildren(g.root, rect);
   const start = new Date().getTime();
-  const fade = () =>
-    window.requestAnimationFrame(() => {
-      const color = rect.backgroundColor ?? {};
-      const { b = 0 } = color;
-      rect.x = ((new Date().getTime() - start) / 500) * 5;
-      rect.backgroundColor = { ...color, b: b + 0.01 };
-      if (b < 1) {
-        window.requestAnimationFrame(fade);
-      } else {
-        console.log("done");
-      }
-    });
+  const fade = () => {
+    const color = rect.backgroundColor ?? {};
+    const { b = 0 } = color;
+    rect.x = (new Date().getTime() - start) / 50;
+    rect.borderRadius = { ...rect.borderRadius, br: Math.random() };
+    rect.backgroundColor = { ...color, b: b + 0.001 };
+    if (b < 1) {
+      window.requestAnimationFrame(fade);
+    } else {
+      console.log("done");
+    }
+  };
   fade();
   window.onclick = ({ clientX, clientY }: MouseEvent) => {
-    const node = g.at(clientX, clientY);
-    if (node == null) {
-      return;
-    }
-    console.log(node);
+    g.at(clientX, clientY, (node) => {
+      if (node == null) {
+        return;
+      }
+      (node as Rectangle).borderRadius = {
+        tl: Math.random(),
+        tr: Math.random(),
+        br: Math.random(),
+        bl: Math.random(),
+      };
+      console.log(node);
+    });
   };
 };

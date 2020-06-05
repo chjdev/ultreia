@@ -66,6 +66,7 @@ void main() {
     const { positionBuffer } = buffers(context);
     const displayProg = program(context);
     context.bindFramebuffer(context.FRAMEBUFFER, null);
+    context.activeTexture(context.TEXTURE0);
     context.bindTexture(context.TEXTURE_2D, texture);
     context.useProgram(displayProg);
     context.bindBuffer(context.ARRAY_BUFFER, positionBuffer);

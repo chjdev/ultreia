@@ -7,6 +7,7 @@ import {
   VertexShaderSource,
 } from "../utils";
 import { Display } from "./Display";
+import { SceneData } from "../../SceneData";
 
 export interface Rectangle extends Primitive {
   x: number;
@@ -48,17 +49,18 @@ void main() {
    // 1000 because corner info is encoded here since gl_VertexID is broken
    vAspect = mod(aPosition.w, 1000.);
    vTex = aTex;
-   vClickId = int(aPosition.z) + 1;
+   vClickId = gl_VertexID / 4 + 1;
    
    // scale the position vector to retina resolution;
    vec2 position = vec2(aPosition) * uRetina;
    // convert the rectangle from pixels to 0.0 to 1.0
-   vec2 zeroToOne = position / uResolution;
+   vec2 zeroToOne = (position / uResolution);
    // convert from 0->1 to 0->2
    vec2 zeroToTwo = zeroToOne * 2.0;
    // convert from 0->2 to -1->+1 (clipspace)
    vec2 clipSpace = zeroToTwo - 1.0;
-   gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1.);
+
+   gl_Position = vec4(clipSpace * vec2(1., -1.), aPosition.z, 1.);
    
    // todo does not work for whatever reason
    // int corner = gl_VertexID % 4;
@@ -120,14 +122,15 @@ void clip(float radiusRatio, vec4 color) {
    // the circular radius is always the smaller possible radius, calculated 
    // by the aspect ratio in 0->1 space. (aspect > 1. means wide rectangle, < 1. narrow rectangle
    float radius = abs(radiusRatio) * (aspect < 1. ? aspect : 1./aspect);
-
+   
    // a vector pointing to the aspect ratio adjusted corner of the rectangle, 0->1 space
-   vec2 cornerVec = vec2(aspect < 1. ? aspect : 1., aspect < 1. ? 1. : 1. / aspect) ;
+   vec2 cornerVec = vec2(aspect < 1. ? aspect : 1., aspect < 1. ? 1. : 1. / aspect);
    // scale the fragment coords based on corner vector;
    vec2 scaledAbs = abs(vCoord * cornerVec);
+   
    // clip off coordinates outside the radius area
    vec2 clipped = scaledAbs - (cornerVec - radius);
-   // calcuate the distance of fragment within tha radius area, are we within the radius?
+   // calcuate the distance of fragment within the radius area, are we within the radius?
    float dist = sqrt(dot(clipped, clipped));
    // check if we are even in the radius area then check whether the distance is outside of the radius
    if (clipped.x > 0. && clipped.y > 0. && dist > radius) {
@@ -148,15 +151,15 @@ void clip(float radiusRatio, vec4 color) {
 
 void main() {
    vec4 color = vColor;
-   // if (vTex.x >= 0. && vTex.y >= 0.) {
-   //     vec2 zeroToOne = (vec2(vCoord.x, vCoord.y) + 1.) / 2.;
-   //     vec2 position = vec2(vTex) / uTexDimensions;
-   //     vec2 offset = (zeroToOne * vec2(vTex.z, vTex.w)) / uTexDimensions;
-   //     vec2 texCoord = position + offset;
-   //     vec4 texel = texture(uSampler, texCoord);
-   //     // color = texel.a < 0.05 ? color : vec4(1. - (1. - vec3(color)) * (1. - vec3(texel)), texel.w);
-   //     color = texel.a < 0.05 ? color : color + texel;
-   // }
+   if (vTex.x >= 0. && vTex.y >= 0.) {
+       vec2 zeroToOne = (vec2(vCoord.x, vCoord.y) + 1.) / 2.;
+       vec2 position = vec2(vTex) / uTexDimensions;
+       vec2 offset = (zeroToOne * vec2(vTex.z, vTex.w)) / uTexDimensions;
+       vec2 texCoord = position + offset;
+       vec4 texel = texture(uSampler, texCoord);
+       // color = texel.a < 0.05 ? color : vec4(1. - (1. - vec3(color)) * (1. - vec3(texel)), texel.w);
+       color = texel.a < 0.05 ? color : color + texel;
+   }
 
    float radius;
    if (vCoord.x < 0. && vCoord.y < 0.) {
@@ -174,8 +177,10 @@ void main() {
    }
    
    clip(radius, color);
-   if (uClickMap) {
-     clickMap = vec4(vClickId >> 24, vClickId << 8 >> 24, vClickId << 16 >> 24, vClickId << 24 >> 24) / 255. * 10.;
+   if (uClickMap && color.a > 0.) {
+     //clickMap = vec4(vClickId >> 24, vClickId << 8 >> 24, vClickId << 16 >> 24, vClickId << 24 >> 24) / 255.;
+     // todo seems to need a 1. as alpha so the blending of the color output doesn't mess up the index
+     clickMap = vec4(vClickId << 8 >> 24, vClickId << 16 >> 24, vClickId << 24 >> 24, 255.) / 255.;
    }
 }  
 ` as FragmentShaderSource;
@@ -203,10 +208,16 @@ void main() {
   type Tuple6<T> = [T, T, T, T, T, T];
   type Tuple2<T> = [T, T];
 
+  export interface ClickTrace {
+    readonly x: number;
+    readonly y: number;
+    readonly onClick: (id: number) => void;
+  }
+
   export const render = (
     context: WebGL2RenderingContext,
-    textureMap: Record<string, [number, number]>,
-    ...rectangles: readonly Readonly<Rectangle>[]
+    data: SceneData,
+    clickTrace?: ClickTrace,
   ) => {
     const {
       fb,
@@ -219,110 +230,30 @@ void main() {
       texBuffer,
     } = buffers(context);
 
-    const rectangleData = new Float32Array(rectangles.length * 4 * 4);
-    const rectangleIndices = new Uint16Array(rectangles.length * 6);
-    rectangles.forEach(({ x, y, width, height }, idx) => {
-      const x1 = x;
-      const x2 = x + width;
-      const y1 = y;
-      const y2 = y + height;
-      const z = idx;
-      const aspect = width / height;
-      const triangleIdx = idx * 4 * 4;
-      // 1000s because corner info is encoded here since gl_VertexID is broken
-      rectangleData.set(
-        [
-          [x1, y1, z, aspect],
-          [x2, y1, z, aspect + 1000],
-          [x1, y2, z, aspect + 2000],
-          [x2, y2, z, aspect + 3000],
-        ].flat(),
-        triangleIdx,
-      );
-      const indexIdx = idx * 6;
-      const quadIdx = idx * 4;
-      // todo assert element index < 2^16
-      rectangleIndices.set(
-        [0, 1, 2, 2, 1, 3].map((vertIdx) => vertIdx + quadIdx),
-        indexIdx,
-      );
-    });
     context.bindBuffer(context.ARRAY_BUFFER, positionBuffer);
     // todo use subData
     context.bufferData(
       context.ARRAY_BUFFER,
-      rectangleData,
+      data.position,
       context.DYNAMIC_DRAW,
     );
     context.bindBuffer(context.ELEMENT_ARRAY_BUFFER, positionIndexBuffer);
     context.bufferData(
       context.ELEMENT_ARRAY_BUFFER,
-      rectangleIndices,
+      data.indices,
       context.DYNAMIC_DRAW,
     );
 
-    const rectangleColors = new Float32Array(
-      rectangles
-        .map(
-          ({ backgroundColor }): Tuple6<[number, number, number, number]> => {
-            const {
-              r = 0,
-              g = 0,
-              b = 0,
-              a = r + g + b > 0 ? 1 : 0,
-            }: { r?: number; g?: number; b?: number; a?: number } =
-              backgroundColor ?? {};
-            const c: [number, number, number, number] = [r, g, b, a];
-            return [c, c, c, c, c, c];
-          },
-        )
-        .flat(2),
-    );
     context.bindBuffer(context.ARRAY_BUFFER, colorBuffer);
-    context.bufferData(
-      context.ARRAY_BUFFER,
-      rectangleColors,
-      context.DYNAMIC_DRAW,
-    );
+    context.bufferData(context.ARRAY_BUFFER, data.colors, context.DYNAMIC_DRAW);
 
-    const rectangleRadii = new Float32Array(
-      rectangles
-        .map(
-          ({ borderRadius }): Tuple6<[number, number, number, number]> => {
-            const { tl = 0, tr = 0, br = 0, bl = 0 } = borderRadius ?? {};
-            const r: [number, number, number, number] = [tl, tr, br, bl];
-            return [r, r, r, r, r, r];
-          },
-        )
-        .flat(2),
-    );
     context.bindBuffer(context.ARRAY_BUFFER, radiiBuffer);
-    context.bufferData(
-      context.ARRAY_BUFFER,
-      rectangleRadii,
-      context.DYNAMIC_DRAW,
-    );
+    context.bufferData(context.ARRAY_BUFFER, data.radii, context.DYNAMIC_DRAW);
 
-    const rectangleTex = new Float32Array(
-      rectangles
-        .map(
-          ({ texture }): Tuple6<[number, number, number, number]> => {
-            const t1: [number, number] = textureMap[texture ?? ""] ?? [-1, -1];
-            const t = [t1[0], t1[1], 256, 384] as [
-              number,
-              number,
-              number,
-              number,
-            ];
-            return [t, t, t, t, t, t];
-          },
-        )
-        .flat(2),
-    );
     context.bindBuffer(context.ARRAY_BUFFER, texBuffer);
     context.bufferData(
       context.ARRAY_BUFFER,
-      rectangleTex,
+      data.texCoords,
       context.DYNAMIC_DRAW,
     );
 
@@ -401,12 +332,6 @@ void main() {
       const retinaUniformLocation = context.getUniformLocation(prog, "uRetina");
       context.uniform1f(retinaUniformLocation, retina);
 
-      const samplerUniformLocation = context.getUniformLocation(
-        prog,
-        "uSampler",
-      );
-      context.uniform1i(samplerUniformLocation, 0);
-
       const texDimensionsUniformLocation = context.getUniformLocation(
         prog,
         "uTexDimensions",
@@ -417,7 +342,7 @@ void main() {
         prog,
         "uClickMap",
       );
-      context.uniform1i(clickMapUniformLocation, 1);
+      context.uniform1i(clickMapUniformLocation, clickTrace ? 1 : 0);
     }
 
     {
@@ -458,7 +383,7 @@ void main() {
         null,
       );
       context.framebufferTexture2D(
-        context.FRAMEBUFFER,
+        context.DRAW_FRAMEBUFFER,
         context.COLOR_ATTACHMENT0,
         context.TEXTURE_2D,
         out,
@@ -497,7 +422,7 @@ void main() {
         context.CLAMP_TO_EDGE,
       );
       context.framebufferTexture2D(
-        context.FRAMEBUFFER,
+        context.DRAW_FRAMEBUFFER,
         context.COLOR_ATTACHMENT1,
         context.TEXTURE_2D,
         click,
@@ -507,28 +432,40 @@ void main() {
         context.COLOR_ATTACHMENT0,
         context.COLOR_ATTACHMENT1,
       ]);
+
+      context.activeTexture(context.TEXTURE2);
+      context.bindTexture(context.TEXTURE_2D, data.texture);
+      const samplerUniformLocation = context.getUniformLocation(
+        prog,
+        "uSampler",
+      );
+      context.uniform1i(samplerUniformLocation, 2);
+
       context.clearColor(0, 0, 0, 0);
       context.clear(context.COLOR_BUFFER_BIT);
 
       // Draw the rectangle.
       const primitiveType = context.TRIANGLES;
-      const count = rectangleIndices.length;
+      const count = data.indices.length;
       context.drawElements(primitiveType, count, context.UNSIGNED_SHORT, 0);
 
-      // context.readBuffer(context.COLOR_ATTACHMENT1);
-      // const buffer = new Uint8Array(
-      //   context.canvas.width * context.canvas.height * 4,
-      // );
-      // context.readPixels(
-      //   0,
-      //   0,
-      //   context.canvas.width,
-      //   context.canvas.height,
-      //   context.RGBA,
-      //   context.UNSIGNED_BYTE,
-      //   buffer,
-      // );
-      // console.log(buffer.slice(buffer.findIndex((value) => value > 0)));
+      if (clickTrace) {
+        context.readBuffer(context.COLOR_ATTACHMENT1);
+        const buffer = new Uint8Array(4);
+        context.readPixels(
+          clickTrace.x * retina,
+          context.canvas.height - clickTrace.y * retina,
+          1,
+          1,
+          context.RGBA,
+          context.UNSIGNED_BYTE,
+          buffer,
+        );
+        const id = ((buffer[0] << 16) | (buffer[1] << 8) | buffer[2]) - 1;
+        if (id >= 0) {
+          clickTrace.onClick(id);
+        }
+      }
 
       Display.display(context, out!);
     }
