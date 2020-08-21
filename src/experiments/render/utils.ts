@@ -2,8 +2,8 @@ import { Opaque } from "ts-essentials";
 
 export const retina = 2;
 
-export type VertexShaderSource = Opaque<string, "VertexShader">;
-export type FragmentShaderSource = Opaque<string, "FragmentShader">;
+export type VertexShaderSource = Opaque<"VertexShader", string>;
+export type FragmentShaderSource = Opaque<"FragmentShader", string>;
 
 export function compileShader(
   context: WebGL2RenderingContext,

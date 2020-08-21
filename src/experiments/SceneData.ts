@@ -14,48 +14,72 @@ export class SceneData {
   public constructor(
     public texture: WebGLTexture,
     public textureMap: TextureMap,
+    public textureWidth: number,
+    public textureHeight: number,
   ) {
     this.resize(0);
     this.end = 0;
   }
 
   public resize(size: number) {
+    this.end = size - 1;
     if (this.indices != null && size <= this.indices.length / 6) {
       // no need to resize
       return;
     }
-    this.position = new Float32Array(size * 4 * 4);
-    this.indices = new Uint16Array(size * 6);
-    this.colors = new Float32Array(this.position.length);
-    this.radii = new Float32Array(this.position.length);
-    this.texCoords = new Float32Array(this.position.length);
+    const position = new Float32Array(size * 4 * 4);
+    position.set(this.position?.subarray(0, position.length) ?? []);
+    this.position = position;
+    const indices = new Uint16Array(size * 6);
+    indices.set(this.indices?.subarray(0, indices.length) ?? []);
+    this.indices = indices;
+    const colors = new Float32Array(this.position.length);
+    colors.set(this.colors?.subarray(0, colors.length) ?? []);
+    this.colors = colors;
+    const radii = new Float32Array(this.position.length);
+    radii.set(this.radii?.subarray(0, radii.length) ?? []);
+    this.radii = radii;
+    const texCoords = new Float32Array(this.position.length);
+    texCoords.set(this.texCoords?.subarray(0, texCoords.length) ?? []);
+    this.texCoords = texCoords;
   }
 
   public length(): number {
     return this.end + 1;
   }
 
-  public insert(id: number) {
+  public insert(id: number, count: number = 1) {
     if (id >= this.length()) {
       this.end = id;
       this.resize(this.length());
       return;
     }
     // vacate a space and move rest up one step
-    this.end++;
+    this.end += count;
     this.resize(this.length());
-    this.indices.set(this.indices.slice(id * 6, this.length() * 6), id * 6 + 6);
+    this.indices.set(
+      this.indices.slice(id * 6, this.indices.length - id * 6),
+      id * 6 + count * 6,
+    );
     const v4Offset = id * 4 * 4;
-    const v4To = v4Offset + 4 + 4;
-    const v4Length = this.length() * 4 * 4;
+    const v4To = v4Offset + count * 4 * 4;
+    const v4Length = this.position.length - v4Offset;
     this.position.set(this.position.slice(v4Offset, v4Length), v4To);
     this.colors.set(this.colors.slice(v4Offset, v4Length), v4To);
     this.radii.set(this.radii.slice(v4Offset, v4Length), v4To);
     this.texCoords.set(this.texCoords.slice(v4Offset, v4Length), v4To);
   }
 
-  public add() {
-    this.insert(this.length());
+  public add(count: number = 1) {
+    this.insert(this.length() - 1 + count);
+  }
+
+  private assertIndex(idx: number) {
+    if (idx < 0 || idx >= this.length()) {
+      throw new Error(
+        `IndexError: ${idx} is outside of bounds [0, ${this.length()}]`,
+      );
+    }
   }
 
   public setPosition(
@@ -72,7 +96,7 @@ export class SceneData {
       height: number;
     },
   ): void {
-    this.resize(id + 1);
+    this.assertIndex(id);
     const z = 0;
     // const maxZoom = 1.5;
     // const scaleFactor =
@@ -109,14 +133,13 @@ export class SceneData {
     );
   }
 
-  private perVertex4(
+  private static perVertex4(
     id: number,
     x: number,
     y: number,
     z: number,
     w: number,
   ): [ArrayLike<number>, number] {
-    this.resize(id + 1);
     return [
       Array(4)
         .fill([x, y, z, w])
@@ -134,11 +157,13 @@ export class SceneData {
       a = r + g + b > 0 ? 1 : 0,
     }: { r?: number; g?: number; b?: number; a?: number },
   ) {
-    this.colors.set(...this.perVertex4(id, r, g, b, a));
+    this.assertIndex(id);
+    this.colors.set(...SceneData.perVertex4(id, r, g, b, a));
   }
 
   public setRadii(id: number, { tl = 0, tr = 0, br = 0, bl = 0 }) {
-    this.radii.set(...this.perVertex4(id, tl, tr, br, bl));
+    this.assertIndex(id);
+    this.radii.set(...SceneData.perVertex4(id, tl, tr, br, bl));
   }
 
   public setTexCoords(
@@ -148,20 +173,18 @@ export class SceneData {
     width: number,
     height: number,
   ) {
-    this.texCoords.set(...this.perVertex4(id, x, y, width, height));
+    this.assertIndex(id);
+    this.texCoords.set(...SceneData.perVertex4(id, x, y, width, height));
   }
 
   public setRectangle(id: number, rectangle: Rectangle) {
+    this.assertIndex(id);
     this.setPosition(id, rectangle);
     this.setColor(id, rectangle.backgroundColor ?? {});
     this.setRadii(id, rectangle.borderRadius ?? {});
 
     // todo
-    const texCoord = [
-      ...(this.textureMap[rectangle.texture ?? ""] ?? [-1, -1]),
-      256,
-      384,
-    ] as [number, number, number, number];
+    const texCoord = this.textureMap[rectangle.texture ?? ""] ?? [-1, -1, 0, 0];
     this.setTexCoords(id, ...texCoord);
   }
 }

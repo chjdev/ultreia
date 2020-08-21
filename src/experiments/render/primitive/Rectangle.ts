@@ -1,5 +1,4 @@
 import moize from "moize";
-import { Primitive } from "./Primitive";
 import {
   createProgram,
   FragmentShaderSource,
@@ -9,11 +8,19 @@ import {
 import { Display } from "./Display";
 import { SceneData } from "../../SceneData";
 
-export interface Rectangle extends Primitive {
+export interface Rectangle {
   x: number;
   y: number;
   width: number;
   height: number;
+  backgroundColor?: Readonly<{
+    r?: number;
+    g?: number;
+    b?: number;
+    a?: number;
+  }>;
+  texture?: string;
+  visible: boolean;
   borderRadius?: Readonly<{
     tl?: number;
     tr?: number;
@@ -157,6 +164,9 @@ void main() {
        vec2 offset = (zeroToOne * vec2(vTex.z, vTex.w)) / uTexDimensions;
        vec2 texCoord = position + offset;
        vec4 texel = texture(uSampler, texCoord);
+        // if (texel.a <= 0.05) {
+        //   discard;
+        // }
        // color = texel.a < 0.05 ? color : vec4(1. - (1. - vec3(color)) * (1. - vec3(texel)), texel.w);
        color = texel.a < 0.05 ? color : color + texel;
    }
@@ -336,7 +346,11 @@ void main() {
         prog,
         "uTexDimensions",
       );
-      context.uniform2f(texDimensionsUniformLocation, 1280, 2048);
+      context.uniform2f(
+        texDimensionsUniformLocation,
+        data.textureWidth,
+        data.textureHeight,
+      );
 
       const clickMapUniformLocation = context.getUniformLocation(
         prog,

@@ -1,114 +1,22 @@
-import { Primitive } from "./render/primitive/Primitive";
+import { scene, Scene } from "./Scene";
+import { addChildren, AsPartialArgs, GraphNode, mutable } from "./GraphNode";
+import { rectangle, Rectangle } from "./Rectangle";
 import { Rectangle as RectanglePrimitive } from "./render/primitive/Rectangle";
-import { retina } from "./render/utils";
-import { Textures } from "./render/Textures";
-import { SceneData } from "./SceneData";
+import { text, Text } from "./Text";
 
-interface InternalGraphNode {
-  id: number;
-  graph: SceneGraph;
-  pending: boolean;
-  children: InternalGraphNode[];
-}
-
-interface GraphNode
-  extends Omit<InternalGraphNode, "id" | "pending" | "children" | "graph"> {
-  readonly graph: SceneGraph;
-  readonly pending: boolean;
-  readonly id: number;
-  children: readonly GraphNode[];
-}
-
-const isGraphNode = (value: any): value is GraphNode =>
-  value.graph instanceof SceneGraph &&
-  typeof value.pending === "boolean" &&
-  Array.isArray(value.children);
-
-type AsArgs<T extends GraphNode | InternalGraphNode> = Omit<
-  T,
-  "pending" | "children" | "graph"
->;
-type AsPartialArgs<T extends GraphNode | InternalGraphNode> = Partial<
-  AsArgs<T>
->;
-
-interface VisualNode extends GraphNode, Primitive {}
-
-interface Scene extends VisualNode {
-  context: WebGL2RenderingContext;
-  data: SceneData;
-}
-
-const isScene = (value: any): value is Scene =>
-  "context" in value && isGraphNode(value);
-
-interface Rectangle extends VisualNode, RectanglePrimitive {}
-
-const isRectangle = (value: any): value is Rectangle =>
-  typeof value.x === "number" &&
-  typeof value.y === "number" &&
-  typeof value.width === "number" &&
-  typeof value.height === "number" &&
-  isGraphNode(value);
-
-const checkGraphParentage = <T extends GraphNode>(
-  node: T,
-  ...children: readonly GraphNode[]
-): boolean => {
-  for (const child of children) {
-    if (child.graph !== node.graph) {
-      return false;
-    }
-    if (
-      child.children.length !== 0 &&
-      !checkGraphParentage(child, ...child.children)
-    ) {
-      return false;
-    }
-  }
-  return true;
-};
-
-const assertGraphParentage = <T extends GraphNode>(
-  node: T,
-  ...children: readonly GraphNode[]
-): void => {
-  if (!checkGraphParentage(node, ...children)) {
-    throw new Error("node has incorrect graph lineage");
-  }
-};
-
-export const addChildren = (
-  node: GraphNode,
-  ...children: readonly GraphNode[]
-): GraphNode => {
-  assertGraphParentage(node, ...children);
-  node.children = [...node.children, ...children];
-  return node;
-};
-
-export const removeChildren = (
-  node: GraphNode,
-  ...children: readonly GraphNode[]
-): GraphNode => {
-  assertGraphParentage(node, ...children);
-  node.children = node.children.filter((child) => !children.includes(child));
-  return node;
-};
-
-class SceneGraph {
-  private sceneIds = new Set<string>();
+export class SceneGraph {
   private updateRequested: number = 0;
   private updateDebounced: boolean = false;
-  // todo
-  private internalRoot!: Scene;
 
-  public get root(): Scene {
-    return this.internalRoot;
-  }
+  private constructor(public readonly root: Scene) {}
 
-  public async init() {
-    this.internalRoot = await this.scene();
+  public static async init(
+    ...children: readonly GraphNode[]
+  ): Promise<SceneGraph> {
+    const s = await scene(...children);
+    const sceneGraph = new SceneGraph(s);
+    mutable(s).graph = sceneGraph;
+    return sceneGraph;
   }
 
   private walkTo(id: number): GraphNode | undefined {
@@ -127,18 +35,31 @@ class SceneGraph {
     }
   }
 
+  public at(x: number, y: number): Promise<GraphNode | undefined>;
   public at(
     x: number,
     y: number,
-    fun: (node: GraphNode | undefined) => void,
-  ): void {
-    RectanglePrimitive.render(this.root.context, this.root.data, {
-      x,
-      y,
-      onClick: (id: number) => {
-        fun(this.walkTo(id));
-      },
-    });
+    fun?: (node: GraphNode | undefined) => void,
+  ): Promise<GraphNode | undefined> | void {
+    if (fun == null) {
+      return new Promise((resolve) => {
+        RectanglePrimitive.render(this.root.context, this.root.data, {
+          x,
+          y,
+          onClick: (id: number) => {
+            resolve(this.walkTo(id));
+          },
+        });
+      });
+    } else {
+      RectanglePrimitive.render(this.root.context, this.root.data, {
+        x,
+        y,
+        onClick: (id: number) => {
+          fun(this.walkTo(id));
+        },
+      });
+    }
   }
 
   private update() {
@@ -165,153 +86,63 @@ class SceneGraph {
     }
   }
 
-  private reindex() {
+  public reindex(after?: GraphNode["id"]) {
     // todo only rectangles atm
     const elements = this.root.children.slice(0);
     const flat: GraphNode[] = [];
-    let current = null;
+    let current: GraphNode | undefined;
+    let found: boolean = after == null;
+    let foundIdx: number = -1;
     while ((current = elements.shift()) != null) {
-      (current as InternalGraphNode).id = flat.length;
-      flat.push(current);
+      // unindexed child kick off indexing from here
+      if (!found && current.id == null) {
+        found = true;
+        foundIdx++;
+      }
+      if (found) {
+        flat.push(current);
+      } else {
+        found = after === current.id;
+        foundIdx++;
+      }
       elements.unshift(...current.children);
     }
 
+    this.root.data.resize(flat.length + foundIdx + 1);
     flat.forEach((element, idx) => {
-      this.root.data.setRectangle(idx, element as Rectangle);
-      (element as InternalGraphNode).pending = false;
+      // this.root.data.setRectangle(idx, element as Rectangle);
+      // sets the whole rectangle anyway
+      mutable(element).id = idx + foundIdx + 1;
     });
-    this.requestUpdate();
   }
 
-  private internalNode<
-    T extends Record<
-      string,
-      | string
-      | number
-      | boolean
-      | undefined
-      | Readonly<Record<string, string | number | boolean | undefined>>
-    >
-  >(target: T, ...children: readonly GraphNode[]): T & InternalGraphNode {
-    const internalNode = new Proxy<T & InternalGraphNode>(
-      {
-        ...target,
-        id: -1,
-        graph: this,
-        pending: true as boolean,
-        children: children as InternalGraphNode[],
-      } as T & InternalGraphNode,
-      {
-        set: <P extends keyof T>(
-          target: T & InternalGraphNode,
-          prop: P,
-          value: T[P],
-        ): boolean => {
-          (target as T)[prop] = value;
-          if (prop !== "pending") {
-            target.pending = true;
-          }
-
-          if (prop === "children") {
-            target.graph.reindex();
-          } else if (target.pending) {
-            // todo scene? only rectangles for now?
-            if (isRectangle(target) && target.id >= 0) {
-              target.graph.root.data.setRectangle(target.id, target);
-            }
-            target.graph.requestUpdate();
-            target.pending = false;
-          }
-          return true;
-        },
-        defineProperty: () => {
-          throw new Error("not supported");
-        },
-        deleteProperty: () => {
-          throw new Error("not supported");
-        },
-      },
-    );
-    return internalNode;
-  }
-
-  public node<
-    T extends Record<
-      string,
-      | string
-      | number
-      | boolean
-      | undefined
-      | Readonly<Record<string, string | number | boolean | undefined>>
-    >
-  >(target: T, ...children: readonly GraphNode[]): T & GraphNode {
-    return this.internalNode(target, ...children);
-  }
-
-  public visualNode<T extends VisualNode>(
-    { backgroundColor, texture, visible = true }: AsPartialArgs<T> = {},
-    ...children: readonly GraphNode[]
-  ): T {
-    return this.node(
-      {
-        backgroundColor,
-        texture,
-        visible,
-      },
-      ...children,
-    ) as T;
-  }
-
-  public async scene<T extends Scene>(
-    args: AsPartialArgs<T> = {},
-    ...children: readonly GraphNode[]
-  ): Promise<T> {
-    const visual = this.visualNode(args, ...children) as T;
-    const canvas = document.createElement("canvas");
-    do {
-      canvas.id = Math.random()
-        .toString()
-        .slice(2);
-    } while (this.sceneIds.has(canvas.id));
-    this.sceneIds.add(canvas.id);
-    canvas.width = document.body.clientWidth * retina;
-    canvas.height = document.body.clientHeight * retina;
-    canvas.style.zIndex = "0";
-    document.body.appendChild(canvas);
-    const context = canvas.getContext("webgl2");
-    if (context == null) {
-      throw new Error("could not create webgl context");
-    }
-    context.blendFunc(context.ONE, context.ONE_MINUS_SRC_ALPHA);
-    context.enable(context.BLEND);
-    const [texture, textureMap] = await Textures.loadTextures(context);
-    Object.assign(visual, {
-      context,
-      data: new SceneData(texture, textureMap),
-    });
-    return visual;
+  public addChildren(...children: readonly GraphNode[]) {
+    addChildren(this.root, ...children);
   }
 
   public rectangle(
     args: AsPartialArgs<Rectangle> = {},
     ...children: readonly GraphNode[]
   ): Rectangle {
-    const { x = 0, y = 0, width = 0, height = 0, borderRadius } = args;
-    const visual = this.visualNode(args, ...children) as Rectangle;
-    Object.assign(visual, {
-      x,
-      y,
-      width,
-      height,
-      borderRadius,
-    });
-    return visual;
+    return rectangle(this, args, ...children);
+  }
+
+  public text(args: AsPartialArgs<Text> = {}): Text {
+    return text(this, args);
   }
 }
 
 export const run = async () => {
-  const g = new SceneGraph();
-  await g.init();
+  const g = await SceneGraph.init();
+  const text = g.text({
+    text: "hello-",
+    x: 100,
+    y: 100,
+    width: 100,
+    height: 100,
+    backgroundColor: { r: 1, b: 1, a: 0.5 },
+    borderRadius: { tr: 0.25, tl: 0.25, bl: 0.25, br: 0.25 },
+  });
   const rect = g.rectangle(
     {
       width: 256,
@@ -338,6 +169,7 @@ export const run = async () => {
         borderRadius: { tr: 1.0, tl: 1.0, bl: 1.0, br: 1.0 },
         texture: "Water",
       }),
+      text,
     ),
     g.rectangle({
       x: 50,
@@ -346,17 +178,21 @@ export const run = async () => {
       height: 30,
       backgroundColor: { g: 0.75 },
       borderRadius: { tr: 1.0 },
-      texture: "Tanner",
+      texture: "3",
     }),
   );
-  addChildren(g.root, rect);
+  g.addChildren(rect);
   const start = new Date().getTime();
   const fade = () => {
     const color = rect.backgroundColor ?? {};
     const { b = 0 } = color;
-    rect.x = (new Date().getTime() - start) / 50;
+    rect.x = Math.floor((new Date().getTime() - start) / 50);
     rect.borderRadius = { ...rect.borderRadius, br: Math.random() };
     rect.backgroundColor = { ...color, b: b + 0.001 };
+    text.text = `hello-${new Date().getSeconds()}`;
+    text.fontSize += 0.05;
+    text.x = rect.x + 10;
+    text.y += 0.1;
     if (b < 1) {
       window.requestAnimationFrame(fade);
     } else {
@@ -364,18 +200,17 @@ export const run = async () => {
     }
   };
   fade();
-  window.onclick = ({ clientX, clientY }: MouseEvent) => {
-    g.at(clientX, clientY, (node) => {
-      if (node == null) {
-        return;
-      }
-      (node as Rectangle).borderRadius = {
-        tl: Math.random(),
-        tr: Math.random(),
-        br: Math.random(),
-        bl: Math.random(),
-      };
-      console.log(node);
-    });
+  window.onclick = async ({ clientX, clientY }: MouseEvent) => {
+    const node = await g.at(clientX, clientY);
+    if (node == null) {
+      return;
+    }
+    (node as Rectangle).borderRadius = {
+      tl: Math.random(),
+      tr: Math.random(),
+      br: Math.random(),
+      bl: Math.random(),
+    };
+    console.log(node);
   };
 };
