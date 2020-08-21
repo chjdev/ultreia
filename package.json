@@ -41,7 +41,7 @@
     "@types/seedrandom": "^2.4.28",
     "@typescript-eslint/eslint-plugin": "^2.9.0",
     "@typescript-eslint/parser": "^2.9.0",
-    "electron": "^7.1.5",
+    "electron": "^7.2.4",
     "electron-reload": "^1.5.0",
     "eslint": "^6.3.0",
     "eslint-config-prettier": "^6.3.0",
